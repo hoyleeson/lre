@@ -14,6 +14,7 @@
 struct exec_context {
 	lrc_obj_t *stack[EXEC_STACK_DEPTH];	
 	int index;
+	struct lre_exec_detail detail;
 };
 
 
@@ -24,6 +25,7 @@ static inline int exec_ctx_push_handle(struct exec_context *ctx,
 		return -EINVAL;
 
 	ctx->stack[ctx->index++] = handle;
+	handle->detail = &ctx->detail;
 	return ctx->index - 1;
 }
 
@@ -37,41 +39,6 @@ static inline lrc_obj_t *exec_ctx_get_handle(struct exec_context *ctx)
 	return ctx->stack[ctx->index - 1];
 }
 
-static double calc_val_dobule(double a, double b, int opt)
-{
-#define CALC(opcode, op) \
-	case SYNTAX_SYM_##opcode: \
-		return a op b
-
-	switch(opt) {
-		CALC(ADD, +);
-		CALC(SUB, -);
-		CALC(MUL, *);
-		CALC(DIV, /);
-		default:
-		loge("Unsupport double calc opt:%d", opt);
-		return RET_DEAD_VAL;
-	}
-	return RET_DEAD_VAL;
-}
-
-static int calc_val_int(int a, int b, int opt)
-{
-#define CALC(opcode, op) \
-	case SYNTAX_SYM_##opcode: \
-		return a op b
-
-	switch(opt) {
-		CALC(ADD, +);
-		CALC(SUB, -);
-		CALC(MUL, *);
-		CALC(DIV, /);
-		default:
-		loge("Unsupport int calc opt:%d", opt);
-		return RET_DEAD_VAL;
-	}
-	return RET_DEAD_VAL;
-}
 
 static int peek_val_type(const char *str)
 {
@@ -138,7 +105,7 @@ static int execute_syntax_val(struct syntax_root *root,
 					struct keyword_stub *valstub;
 					valstub = exprval->valstub;
 					valstub->var_handler(handle, &tmparg);
-					if(ret != LRE_RESULT_OK) {
+					if(ret != LRE_RET_OK) {
 						loge("Execute err: failed to call '%s' var_handler.", 
 								valstub->keyword);
 						goto out;	
@@ -178,11 +145,11 @@ static int execute_syntax_val(struct syntax_root *root,
 		} else if(arg->type == LRE_ARG_TYPE_DOUBLE || 
 				tmparg.type == LRE_ARG_TYPE_DOUBLE) {
 			arg->type = LRE_ARG_TYPE_DOUBLE;
-			arg->valdouble = calc_val_dobule(arg->valdouble, tmparg.valdouble, opt);
+			arg->valdouble = lre_calc_dobule(arg->valdouble, tmparg.valdouble, opt);
 			if(arg->valint == RET_DEAD_VAL)
 				goto out;
 		} else {
-			arg->valint = calc_val_int(arg->valint, tmparg.valint, opt);
+			arg->valint = lre_calc_int(arg->valint, tmparg.valint, opt);
 			if(arg->valint == RET_DEAD_VAL)
 				goto out;
 		}
@@ -258,11 +225,21 @@ static int execute_syntax_func(struct syntax_func *func,
 			}
 
 			ret = argstub->arg_handler(handle, &arg);
-			if(ret != LRE_RESULT_OK) {
+			if(ret != LRE_RET_OK) {
 				loge("Execute err: failed to call '%s' arg_handler.(%d)",
 					   	argstub->keyword, ret);
 				goto out;
 			}
+		}
+	}
+
+	/* FIXME: */
+	if(handle->execfunc) {
+		ret = handle->execfunc(handle);
+		if(ret) {
+			loge("Execute err: failed to func '%s' inner func.", funcstub->keyword);
+			ret = -EINVAL;
+			goto out;
 		}
 	}
 
@@ -310,7 +287,7 @@ static int execute_syntax_call(struct syntax_call *call,
 			}
 
 			ret = argstub->arg_handler(handle, &arg);
-			if(ret != LRE_RESULT_OK) {
+			if(ret != LRE_RET_OK) {
 				loge("Execute err: failed to call '%s' arg_handler.(%d)", 
 						argstub->keyword, ret);
 				ret = -EINVAL;
@@ -319,14 +296,14 @@ static int execute_syntax_call(struct syntax_call *call,
 		}
 	}
 
-	if(!handle->execfn) {
+	if(!handle->execcall) {
 		loge("Execute err: lrc call '%s' execfn is NULL.", callstub->keyword);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* FIXME: */
-	ret = handle->execfn(handle, arg);
+	ret = handle->execcall(handle, arg);
 	if(ret) {
 		loge("Execute err: failed to call '%s' inner func.", callstub->keyword);
 		ret = -EINVAL;
@@ -425,18 +402,29 @@ int interp_execute(struct interp_context *ctx)
 {
 	int ret;
 	struct exec_context exec_ctx;
+	struct lre_exec_detail *detail;
 
 	memset(&exec_ctx, 0, sizeof(exec_ctx));
 	exec_ctx.index = 0;
+	detail = &exec_ctx.detail;
+
+	lre_exec_detail_init(detail, 256);
 
 	logd("Start execute rules.");
 	ret = execute_syntax_tree(ctx->root, &exec_ctx);
-	if(!vaild_lre_results(ret)) {
+	if(vaild_lre_results(ret)) {
+		ctx->results = ret;
+		ctx->errcode = LRE_RET_OK;
+	} else {
 		loge("Execute error, unexpect result:%d", ret);
-		return -EINVAL;
+		ctx->results = LRE_RESULT_UNKNOWN;
+		ctx->errcode = ret;
 	}
 
-	ctx->results = ret;
+	if(detail->len > 0)
+		ctx->details = strdup(detail->detail);
+
+	lre_exec_detail_release(detail);
 	return 0;
 }
 

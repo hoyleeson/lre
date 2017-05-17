@@ -14,7 +14,7 @@
 #define SYNTAX_CODE_EOF 	(0xffff)
 #define CODE_MAX_LEN 		(4096)
 
-#define RET_DEAD_VAL 		(0xdeaddead)
+#define RET_DEAD_VAL 		LRE_RESULT_UNKNOWN
 
 /*
  * Support operator: 
@@ -228,6 +228,7 @@ struct lex_token {
 struct interp_context {
 	const char *code;
 
+	/* Use for lexer analysis and syntax parse */
 	char *wordbuf;
 	struct lex_token *tokens;
 	int tokenidx;
@@ -237,10 +238,15 @@ struct interp_context {
 	char *codeptr;
 	char *wordptr;
 
-	void *context;
-
+	/* syntax tree */
 	struct syntax_root *root;
-	int results;
+
+	/* Execute results return and details */
+	int results; /* Logic operation results (true or false) */
+	int errcode;  /* Program execute return (success or failed code) */
+	char *details;  /* Execute detail infomation (description string) */
+
+	void *context;
 };
 
 
@@ -279,9 +285,19 @@ static inline void interp_context_refresh(struct interp_context *ctx)
 	ctx->tokenidx = 0;
 }
 
-static inline int interp_get_results(struct interp_context *ctx)
+static inline int interp_get_exec_results(struct interp_context *ctx)
 {
 	return ctx->results;
+}
+
+static inline int interp_get_exec_errcode(struct interp_context *ctx)
+{
+	return ctx->errcode;
+}
+
+static inline const char *interp_get_exec_details(struct interp_context *ctx)
+{
+	return ctx->details;
 }
 
 static inline struct lex_token *peek_curr_token(struct interp_context *ctx)
@@ -330,7 +346,7 @@ int get_symbol_type(int sym);
 const char *get_symbol_str(int sym);
 
 int interpreter_init(void);
-int interpreter_execute(const char *code);
+int interpreter_execute(const char *code, struct lre_result *res);
 
 
 /* install/find keyword */

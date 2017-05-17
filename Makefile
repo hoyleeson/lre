@@ -1,7 +1,8 @@
 LDFLAGS := -ldl -lpthread
 CFLAGS := -g -Ofast -Wall -fPIC
 
-SRCS := lre.c  interpreter.c  syntax.c  lexer.c  semantic.c  execute.c  log.c  utils.c  vector.c
+SRCS := lre.c  calculate.c  preprocessor.c  interpreter.c  syntax.c  lexer.c  semantic.c  execute.c  \
+	log.c  utils.c  vector.c
 include lrc/Build.mk
 
 OBJS := $(patsubst %.c,%.o,$(SRCS))

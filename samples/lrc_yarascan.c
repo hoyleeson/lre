@@ -31,7 +31,7 @@ static int arg_rule_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	yarascan = (struct lrc_yarascan *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int arg_target_handler(lrc_obj_t *handle, struct lre_value *lreval)
@@ -40,7 +40,7 @@ static int arg_target_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	yarascan = (struct lrc_yarascan *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int expr_matched_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)

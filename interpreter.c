@@ -194,7 +194,7 @@ struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec,
 }
 
 
-static struct interp_context *prase_context_create(const char *code)
+static struct interp_context *interp_context_create(const char *code)
 {
 	struct interp_context *ctx;
 
@@ -212,8 +212,11 @@ static struct interp_context *prase_context_create(const char *code)
 	ctx->wordptr = ctx->wordbuf;
 	ctx->codeptr = (char *)ctx->code;
 
-	ctx->context = NULL;
 	ctx->results = LRE_RESULT_UNKNOWN;
+	ctx->errcode = LRE_RET_OK;
+	ctx->details = NULL;
+
+	ctx->context = NULL;
 	return ctx;
 }
 
@@ -221,15 +224,17 @@ static void interp_context_destroy(struct interp_context *ctx)
 {
 	free(ctx->wordbuf);
 	free(ctx->tokens);
+	if(ctx->details)
+		free(ctx->details);
 	free(ctx);
 }
 
-int interpreter_execute(const char *code)
+int interpreter_execute(const char *code, struct lre_result *res)
 {
 	int ret;
 	struct interp_context *ctx;
 
-	ctx = prase_context_create(code);
+	ctx = interp_context_create(code);
 
 	ret = interp_lexer_analysis(ctx);
 	if(ret) {
@@ -263,8 +268,11 @@ int interpreter_execute(const char *code)
 		return -EINVAL;
 	}
 
-	ret = interp_get_results(ctx);
-
+	res->result = interp_get_exec_results(ctx);
+	res->errcode = interp_get_exec_errcode(ctx);
+	res->details = (char*)interp_get_exec_details(ctx);
+	ctx->details = NULL;
+	
 	interp_context_destroy(ctx);
 	return ret;
 }

@@ -12,14 +12,14 @@ char code[1024] = "process(procname=\"redis-server\", procdir=fuzzypath(path=\"/
 int main(int argc, char **argv)
 {
 	int ret;
-
+	struct lre_result result;
 	lre_init();
 
 	lrc_builtin_init();
 
 	lrc_yarascan_init();
 
-	ret = lre_execute(code);
+	ret = lre_execute(code, &result);
 	if(vaild_lre_results(ret))
 		printf("exec result:%d\n", ret);
 	else

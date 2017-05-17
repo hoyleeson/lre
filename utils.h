@@ -43,6 +43,7 @@ static inline uint32_t hash_32(int val, unsigned int bits)
 		(type *)( (char *)__mptr - offsetof(type,member) );})
 
 
+#define min(a, b)   (((a) > (b)) ? (b) : (a))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #ifdef __cplusplus

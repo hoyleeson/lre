@@ -32,25 +32,58 @@ struct lre_value {
 	};
 };
 
+struct lre_exec_detail {
+	char *detail;
+	int len;
+	int cap;
+};
+
 struct lrc_object {
 	int type;
 #define LRC_OBJECT_FUNC 		(0)
 #define LRC_OBJECT_CALL 		(1)
-	/* only use for LRC_OBJECT_CALL */
-	int (*execfn)(struct lrc_object *, struct lre_value *);
+	union {
+		int (*execfunc)(struct lrc_object *);
+		int (*execcall)(struct lrc_object *, struct lre_value *);
+	};
+	struct lre_exec_detail *detail;
 };
 
 typedef struct lrc_object lrc_obj_t;
 
+struct lre_result {
+	int result;
+	int errcode;
+	char *details;
+};
+
+/* Logic operation results (true or false) */
 #define LRE_RESULT_FALSE 		(0)
 #define LRE_RESULT_TRUE 		(1)
-#define LRE_RESULT_OK 			(0)
-#define LRE_RESULT_ERROR 		(0xdeaddead)
 #define LRE_RESULT_UNKNOWN 		(0xdeaddeed)
 
+/* Program execute return (success or failed code) */
+#define LRE_RET_OK 			(0)
+/* Failed code the same to errno */
+#define LRE_RET_ERROR 		(0xdeaddead)
+
+
+int lre_calc_int(int a, int b, int op);
+double lre_calc_dobule(double a, double b, int op);
+
+int lre_compare_int(int a, int b, int op);
+int lre_compare_double(double a, double b, int op);
+int lre_compare_string(char *a, char *b, int op);
+
+
+void lre_exec_detail_init(struct lre_exec_detail *detail, int cap);
+void lre_exec_detail_release(struct lre_exec_detail *detail);
+int lre_push_exec_detail(struct lrc_object *obj, const char *str);
+
 int lre_init(void);
-int lre_execute(const char *code);
+int lre_execute(const char *code, _out struct lre_result *res);
 void lre_release(void);
+int lre_get_results(void);
 
 static inline int vaild_lre_results(int res)
 {
@@ -74,7 +107,7 @@ struct lrc_stub_expr {
 struct lrc_stub_var {
 	char *keyword;
 	char *description;
-	int (*handler)(lrc_obj_t *, struct lre_value *);
+	int (*handler)(lrc_obj_t *, _out struct lre_value *);
 };
 
 struct lrc_stub_call {

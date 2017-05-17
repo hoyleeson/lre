@@ -33,11 +33,11 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	process = (struct lrc_process *)handle;
 
 	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	process->path = strdup(lreval->valstring);
 	printf("procname:%s\n", process->path);
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
@@ -47,11 +47,11 @@ static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	process = (struct lrc_process *)handle;
 
 	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	//	fuzzypath(lreval->valstring);
 	process->path = strdup(lreval->valstring);
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
@@ -60,7 +60,7 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 
 	process = (struct lrc_process *)handle;
 	if(!process->path)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	return LRE_RESULT_TRUE;
 }
@@ -71,7 +71,7 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 
 	process = (struct lrc_process *)handle;
 	if(!process->path)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	return LRE_RESULT_TRUE;
 }
@@ -82,10 +82,10 @@ static int expr_cmdline_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 
 	process = (struct lrc_process *)handle;
 	if(!process->path)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
-		return LRE_RESULT_ERROR;
+		return LRE_RET_ERROR;
 
 	return LRE_RESULT_TRUE;
 }

@@ -13,11 +13,10 @@ struct lrc_fuzzypath {
 	struct lrc_object base;
 };
 
-int fuzzypath_execute(struct lrc_object *lreobj, struct lre_value *val)
+int fuzzypath_execute(lrc_obj_t *lreobj, struct lre_value *val)
 {
-
+	return 0;
 }
-
 
 static lrc_obj_t *func_fuzzypath_handler(void)
 {
@@ -27,7 +26,7 @@ static lrc_obj_t *func_fuzzypath_handler(void)
 	if(!fuzzypath) {
 		return (lrc_obj_t *)0;
 	}
-	fuzzypath->base.execfn = fuzzypath_execute;
+	fuzzypath->base.execcall = fuzzypath_execute;
 
 	return (lrc_obj_t *)fuzzypath;
 }
@@ -38,7 +37,7 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
@@ -47,7 +46,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static struct lrc_stub_arg fuzzypath_args[] = {

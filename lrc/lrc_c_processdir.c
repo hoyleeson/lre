@@ -13,6 +13,11 @@ struct lrc_processdir {
 	struct lrc_object base;
 };
 
+int processdir_execute(lrc_obj_t *lreobj, struct lre_value *val)
+{
+	return 0;
+}
+
 static lrc_obj_t *func_processdir_handler(void)
 {
 	struct lrc_processdir *processdir;
@@ -21,6 +26,7 @@ static lrc_obj_t *func_processdir_handler(void)
 	if(!processdir) {
 		return (lrc_obj_t *)0;
 	}
+	processdir->base.execcall = processdir_execute;
 
 	return (lrc_obj_t *)processdir;
 }
@@ -31,7 +37,7 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	processdir = (struct lrc_processdir *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
@@ -40,7 +46,7 @@ static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	processdir = (struct lrc_processdir *)handle;
 
-	return LRE_RESULT_OK;
+	return LRE_RET_OK;
 }
 
 static struct lrc_stub_arg processdir_args[] = {

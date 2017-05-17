@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "interpreter.h"
 
@@ -103,6 +105,61 @@ err:
 	return -EINVAL;
 }
 
+#define EXEC_DETAIL_GAP 		(4)
+#define EXEC_DETAIL_UNIT_MAX 	(32)
+#define EXEC_DETAIL_LEN_MAX 	(100 * EXEC_DETAIL_UNIT_MAX)
+
+void lre_exec_detail_init(struct lre_exec_detail *detail, int cap)
+{
+	detail->detail = xzalloc(cap + EXEC_DETAIL_GAP);
+	detail->cap = cap;
+	detail->len = 0;
+}
+
+void lre_exec_detail_release(struct lre_exec_detail *detail)
+{
+	free(detail->detail);
+	detail->cap = detail->len = 0;
+}
+
+static void lre_exec_detail_expand(struct lre_exec_detail *detail)
+{
+	char *ptr;
+	int newcap;
+
+	newcap = detail->cap * 2;
+	ptr = realloc(detail->detail, newcap + EXEC_DETAIL_GAP);
+	if(!ptr) {
+		fatal("Expand exec detail memory failed.");
+	}
+	detail->cap = newcap;
+	detail->detail = ptr;
+}
+
+int lre_push_exec_detail(struct lrc_object *obj, const char *str)
+{
+	int len;
+	int etc = 0;
+	struct lre_exec_detail *detail = obj->detail;
+
+	if(detail->len + EXEC_DETAIL_UNIT_MAX >= EXEC_DETAIL_LEN_MAX)
+		return -ENOMEM;
+
+	len = strlen(str);
+	if(len > EXEC_DETAIL_UNIT_MAX) {
+		logw("lre push exec detail more than %d", EXEC_DETAIL_UNIT_MAX);
+		len = EXEC_DETAIL_UNIT_MAX - 4;
+		etc = 1;
+	}
+
+	if(detail->cap - detail->len < len)
+		lre_exec_detail_expand(detail);
+
+	detail->len += snprintf(detail->detail + detail->len, len, "%s", str);
+	detail->len += sprintf(detail->detail + detail->len, "%s, ", etc ? "...": "");
+	return 0;
+}
+
 int lrc_module_register(struct lrc_module *module)
 {
 	int i;
@@ -141,9 +198,9 @@ int lre_init(void)
 	return 0;
 }
 
-int lre_execute(const char *code)
+int lre_execute(const char *code, struct lre_result *res)
 {
-	return interpreter_execute(code);
+	return interpreter_execute(code, res);
 }
 
 void lre_release(void)
