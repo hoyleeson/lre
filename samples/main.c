@@ -6,7 +6,7 @@ static char code1[] = "file(path=\"/usr/bin/apt\"){exist==1 && owner==root && pe
 static char code2[] = "process(procname=\"sshd\", procdir=fuzzypath(path=\"/usr/*/sshd\")){running==1 && user != root}";
 static char code3[] = "process(procname=\"sshd\", procdir=fuzzypath(path=\"/usr/*/sshd\")){running==1} && file(path=fuzzypath(basepath=processdir(procname=\"sshd\", procdir=\"/usr/*/sshd\"), path=\"/etc/ssh/sshd_*\")){exist==1 && owner==root && permission==644}";
 
-static char code4[] = "file(path=\"/usr/local/test\"){exist==1 && owner==root && permission==755}";
+static char code4[] = "file(path=fuzzypath(path=\"/home/*ixinhai/wo*ace/linux-*/net/ipv4/netfilter/nf_*.c\")){exist==1}";
 
 static char *code[] = {
 	code1,

@@ -106,7 +106,7 @@ err:
 }
 
 #define EXEC_DETAIL_GAP 		(4)
-#define EXEC_DETAIL_UNIT_MAX 	(32)
+#define EXEC_DETAIL_UNIT_MAX 	(64)
 #define EXEC_DETAIL_LEN_MAX 	(100 * EXEC_DETAIL_UNIT_MAX)
 
 void lre_exec_detail_init(struct lre_exec_detail *detail, int cap)
@@ -145,7 +145,7 @@ int lre_push_exec_detail(struct lrc_object *obj, const char *str)
 	if(detail->len + EXEC_DETAIL_UNIT_MAX >= EXEC_DETAIL_LEN_MAX)
 		return -ENOMEM;
 
-	len = strlen(str);
+	len = strlen(str) + 1;
 	if(len > EXEC_DETAIL_UNIT_MAX) {
 		logw("lre push exec detail more than %d", EXEC_DETAIL_UNIT_MAX);
 		len = EXEC_DETAIL_UNIT_MAX - 4;

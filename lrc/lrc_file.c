@@ -87,6 +87,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
+	int ret;
 	struct lrc_file *file;
 
 	file = (struct lrc_file *)handle;
@@ -97,7 +98,13 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 		return LRE_RET_ERROR;
 
 	/*FIXME: verify val first */
-	return lre_compare_int(file->exist, lreval->valint, opt);
+	ret = lre_compare_int(file->exist, lreval->valint, opt);
+	if(!ret) {
+		char buf[128] = {0};
+		snprintf(buf, 128, "file '%s'%s exist", file->path, file->exist ? "":" not");
+		lre_push_exec_detail(handle, buf);
+	}
+	return ret;
 }
 
 static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
