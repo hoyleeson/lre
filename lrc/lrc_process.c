@@ -21,7 +21,7 @@ struct process_info {
 	char *name;
 	char *user;
 	char *cmdline;
-	char *bindir;
+	char *binpath;
 
 	struct process_info *next;
 };
@@ -101,16 +101,16 @@ static struct process_info *get_process_info(int pid)
 	sprintf(buf, "/proc/%d/exe", pid);
 	r = readlink(buf, path, PATH_MAX - 1);
 	if(r <= 0)
-		psinfo->bindir = NULL;
+		psinfo->binpath = NULL;
 	else
-		psinfo->bindir = strdup(path);
+		psinfo->binpath = strdup(path);
 
 	/*
 	ptr = getrealdir(buf);
 	if(ptr)
-		psinfo->bindir = strdup(ptr);
+		psinfo->binpath = strdup(ptr);
 	else
-		psinfo->bindir = NULL;
+		psinfo->binpath = NULL;
 	*/
 
 	sprintf(buf, "/proc/%d/stat", pid);
@@ -191,7 +191,7 @@ int scan_processes(void)
 struct lrc_process {
 	struct lrc_object base;
 	char *procname;
-	char *procdir;
+	char *procpath;
 
 	struct process_info *psinfo[PROCESS_COUNT_MAX];
 	int count;
@@ -211,12 +211,34 @@ void fill_spec_process(struct lrc_process *process)
 	while(psinfo) {
 		ret = 1;
 
-		if(process->procname)
+		if(process->procname) {
+			if(!psinfo->name) {
+				psinfo = psinfo->next;
+				continue;
+			}
 			ret &= !strcmp(process->procname, psinfo->name);
-		if(process->procdir)
-			ret &= !strcmp(process->procname, psinfo->name);
-		if(ret)
+		}
+		if(process->procpath) {
+			int r;
+			char *ptr;
+
+			if(!psinfo->binpath) {
+				psinfo = psinfo->next;
+				continue;
+			}
+			r = !strncmp(process->procpath, psinfo->binpath, strlen(psinfo->binpath));
+
+			ptr = process->procpath;
+			while((ptr = strchr(ptr, ':')) != NULL) {
+				ptr++;
+				r |= !strncmp(ptr, psinfo->binpath, strlen(psinfo->binpath));
+			}
+			ret &= r;
+		}
+		if(ret) {
 			process->psinfo[process->count++] = psinfo;
+			printf("========>process:%s\n", process->procname);
+		}
 
 		psinfo = psinfo->next;
 	}
@@ -225,9 +247,11 @@ void fill_spec_process(struct lrc_process *process)
 int process_execute(lrc_obj_t *handle)
 {
 	struct lrc_process *process;
+	if(processlist == NULL)
+		scan_processes();
 
 	process = (struct lrc_process *)handle;
-	if(!process->procname && !process->procdir) {
+	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
 		return -EINVAL;
 	}
@@ -266,7 +290,7 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	return LRE_RET_OK;
 }
 
-static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
+static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 {
 	struct lrc_process *process;
 
@@ -275,8 +299,8 @@ static int arg_procdir_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
 		return LRE_RET_ERROR;
 
-	process->procdir = strdup(lreval->valstring);
-	printf("process directory:%s\n", process->procname);
+	process->procpath = strdup(lreval->valstring);
+	printf("process directory:%s\n", process->procpath);
 	return LRE_RET_OK;
 }
 
@@ -318,7 +342,6 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 		sprintf(user, "%s", lreval->valstring);
 	}
 
-
 	for(i=0; i<process->count; i++) {
 		psinfo = process->psinfo[i];
 
@@ -351,7 +374,7 @@ int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	struct lrc_process *process;
 
 	process = (struct lrc_process *)handle;
-	if(!process->procname && !process->procdir) {
+	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
 		return -EINVAL;
 	}
@@ -382,9 +405,9 @@ static struct lrc_stub_arg process_args[] = {
 		.description = "Type: string. Specify process name. example: procname=\"redis\"",
 		.handler 	 = arg_procname_handler,
 	}, {
-		.keyword  	 = "procdir",
-		.description = "Type: string. Specify process binary directory. example: procdir=\"/usr/local/\"",
-		.handler 	 = arg_procdir_handler,
+		.keyword  	 = "procpath",
+		.description = "Type: string. Specify process binary directory. example: procpath=\"/usr/local/\"",
+		.handler 	 = arg_procpath_handler,
 	}
 };
 
