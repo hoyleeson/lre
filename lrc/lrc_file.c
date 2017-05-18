@@ -25,7 +25,9 @@ struct lrc_file {
 #define STATE_EXEC_SUCCESS 	(1)
 };
 
-int file_execute(lrc_obj_t *handle)
+#define FILE_PERMISSION_MASK 	(0xfff)
+
+static int file_execute(lrc_obj_t *handle)
 {
 	int ret;
 	struct stat st;
@@ -42,11 +44,16 @@ int file_execute(lrc_obj_t *handle)
 		file->exist = 1;
 		file->owner = st.st_uid;
 		file->group = st.st_gid;
-		file->permission = st.st_mode;
-	} else if(ret == ENOENT) {
-		file->exist = 0;
+		file->permission = st.st_mode & FILE_PERMISSION_MASK;
+	} else {
+		if(errno == ENOENT)
+			file->exist = 0;
+		else
+			file->exist = -1;
+		file->owner = -1;
+		file->group = -1;
+		file->permission = -1;
 	}
-
 	file->state = STATE_EXEC_SUCCESS;
 	return 0;
 }
@@ -117,26 +124,37 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(lreval->type == LRE_ARG_TYPE_INT) {
 		char u[32];	
 		sprintf(u, "%d", lreval->valint);
-		return strcmp(u, user);
+		return lre_compare_string(user, u, opt);
 	}
-
 	return lre_compare_string(user, lreval->valstring, opt);
+}
+
+static int int2perm(int val)
+{
+	int i = 0;
+	int v = 0;
+
+	while(val) {
+		v |= (val % 10) << (i*3);
+		val /= 10;
+		i++;
+	}
+	return v;
 }
 
 static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
 	struct lrc_file *file;
-	unsigned long val;
+	unsigned int val;
 
 	file = (struct lrc_file *)handle;
 	if(file->state == STATE_EXEC_FAILED)
 		return LRE_RET_ERROR;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING)
+	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
 		return LRE_RET_ERROR;
 
-	/*FIXME:*/
-	val = str2hex((unsigned char *)lreval->valstring);
+	val = int2perm(lreval->valint);
 
 	return lre_compare_int(file->permission, val, opt);
 }

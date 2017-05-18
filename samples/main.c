@@ -2,28 +2,40 @@
 #include "../lre.h"
 #include "../lrc/builtin_lrc.h"
 
-//char code[1024] = "file(path=val1,fuzzypath=\"%s ads ^`!@#$%%%^^&&***(()_+=[]{};:'|<,>.\", arg3=fuzzypath(path=\"testpath/test\"), arg4=test()){(key1==val1 && key2==val2 && submodule(arg3=val3){key3==val3}) || key4 >= val4 || (key5 != val5 + (abc * def * add + (sda / $dad * adf) - $vvv) && submodule(arg3=val4){key3==val3 || keyn != valn})}";
-//char code[1024] = "key1==abc";
-//char code[1024] = "file(path=\"./core\"){exist==1 && owner==redis && permission==640}";
+static char code1[] = "file(path=\"/usr/bin/apt\"){exist==1 && owner==root && permission==755}";
+static char code2[] = "process(procname=\"sshd\", procdir=fuzzypath(path=\"/usr/*/sshd\")){running==1 && user != root}";
+static char code3[] = "process(procname=\"sshd\", procdir=fuzzypath(path=\"/usr/*/sshd\")){running==1} && file(path=fuzzypath(basepath=processdir(procname=\"sshd\", procdir=\"/usr/*/sshd\"), path=\"/etc/ssh/sshd_*\")){exist==1 && owner==root && permission==644}";
 
-extern int lrc_yarascan_init(void);
+static char code4[] = "file(path=\"/usr/local/test\"){exist==1 && owner==root && permission==755}";
 
-char code[1024] = "process(procname=\"redis-server\", procdir=fuzzypath(path=\"/data/service/*\")) {running==1} && yarascan(rule=\"xx.yar\", target=fuzzypath(basepath=processdir(procname=\"redis-server\", procdir=fuzzypath(path=\"/data/service/*\")), path=\"/../conf/redis-*.conf\")) {matched == 1}";
+static char *code[] = {
+	code1,
+	code2,
+	code3,
+	code4,
+};
+
 int main(int argc, char **argv)
 {
+	int i;
 	int ret;
 	struct lre_result result;
 	lre_init();
 
 	lrc_builtin_init();
 
-	lrc_yarascan_init();
+	for(i=0; i<ARRAY_SIZE(code); i++) {
+		ret = lre_execute(code[i], &result);
+		if(ret) {
+			printf("lre execute err\n");
+			continue;
+		}
 
-	ret = lre_execute(code, &result);
-	if(vaild_lre_results(ret))
-		printf("exec result:%d\n", ret);
-	else
-		printf("exec error.\n");
+		if(vaild_lre_results(result.result))
+			printf("exec result:%d, detail:%s\n", result.result, result.details);
+		else
+			printf("exec error, errcode:%d, detail:%s\n", result.errcode, result.details);
+	}
 
 	lre_release();
 

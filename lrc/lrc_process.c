@@ -34,7 +34,7 @@ void process_info_add(struct process_info *psinfo)
 	processlist = psinfo;
 }
 
-static char *getrealdir(char *path)
+char *getrealdir(char *path)
 {
 	char *p;
 	char buf[1024];
@@ -73,6 +73,7 @@ static struct process_info *get_process_info(int pid)
 {
 	char user[32];
 	char buf[1024];
+	char path[PATH_MAX];
 	struct stat stats;
 	int fd, r;
 	char *ptr, *name;
@@ -98,11 +99,19 @@ static struct process_info *get_process_info(int pid)
 	psinfo->user = strdup(user);
 
 	sprintf(buf, "/proc/%d/exe", pid);
+	r = readlink(buf, path, PATH_MAX - 1);
+	if(r <= 0)
+		psinfo->bindir = NULL;
+	else
+		psinfo->bindir = strdup(path);
+
+	/*
 	ptr = getrealdir(buf);
 	if(ptr)
 		psinfo->bindir = strdup(ptr);
 	else
 		psinfo->bindir = NULL;
+	*/
 
 	sprintf(buf, "/proc/%d/stat", pid);
 	fd = open(buf, O_RDONLY);
@@ -335,6 +344,38 @@ static int expr_cmdline_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	return LRE_RESULT_TRUE;
 }
 
+/****************************************************/
+
+int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
+{
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+	if(!process->procname && !process->procdir) {
+		process->state = STATE_EXEC_FAILED;
+		return -EINVAL;
+	}
+
+	fill_spec_process(process);
+
+	process->state = STATE_EXEC_SUCCESS;
+	return 0;
+}
+
+static lrc_obj_t *func_processdir_handler(void)
+{
+	struct lrc_process *process;
+
+	process = malloc(sizeof(*process));
+	if(!process) {
+		return (lrc_obj_t *)0;
+	}
+	process->base.execcall = processdir_execute;
+
+	return (lrc_obj_t *)process;
+}
+
+
 static struct lrc_stub_arg process_args[] = {
 	{
 		.keyword  	 = "procname",
@@ -376,10 +417,23 @@ static struct lrc_stub_func lrc_funcs[] = {
 	}
 };
 
+static struct lrc_stub_call lrc_calls[] = {
+	{
+		.keyword 	 = "processdir",
+		.description = "Get process directory.",
+		.handler 	 = func_processdir_handler,
+
+		.args 	   = process_args,
+		.argcount  = ARRAY_SIZE(process_args),
+	}
+};
+
 struct lrc_module lrc_process_mod = {
 	.name = "lrc_process",
 	.funcs = lrc_funcs,
 	.funccount = ARRAY_SIZE(lrc_funcs),
+	.calls = lrc_calls,
+	.callcount = ARRAY_SIZE(lrc_calls),
 };
 
 

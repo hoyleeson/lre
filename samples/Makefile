@@ -2,7 +2,7 @@ LDFLAGS := -ldl -lpthread ../liblre.a
 #-L.. -llre
 CFLAGS := -g -Ofast -Wall -fPIC -I..
 
-SRCS := main.c  lrc_yarascan.c
+SRCS := main.c  lrc_funcsample.c  lrc_callsample.c  lrc_samplez.c
 
 OBJS := $(patsubst %.c,%.o,$(SRCS))
 

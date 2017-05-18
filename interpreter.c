@@ -253,7 +253,7 @@ int interpreter_execute(const char *code, struct lre_result *res)
 	}
 
 	interp_context_refresh(ctx);
-
+	//dump_syntax_tree(ctx->root);
 	ret = interp_semantic_analysis(ctx);
 	if(ret) {
 		loge("Interpreter err: semantic analysis error.");
@@ -274,7 +274,7 @@ int interpreter_execute(const char *code, struct lre_result *res)
 	ctx->details = NULL;
 	
 	interp_context_destroy(ctx);
-	return ret;
+	return 0;
 }
 
 int interpreter_init(void)

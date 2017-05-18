@@ -60,6 +60,10 @@ static int val2lre_value(char *val, struct lre_value *arg)
 	arg->type = type;
 	switch(type) {
 		case LRE_ARG_TYPE_STRING:
+			if(val[0] != '"') {
+				arg->valstring = val;
+				break;
+			}
 			l = strlen(val);
 			val[l - 1] = 0;
 			val++;
@@ -173,11 +177,11 @@ static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ct
 
 	keystub = expr->keystub;
 
-	loge("Execute expr '%s'.", keystub->keyword);
+	logv("Execute expr '%s'.", keystub->keyword);
 	arg.type = LRE_ARG_TYPE_UNKNOWN;
 	ret = execute_syntax_val(&expr->valchilds, ctx, &arg);
 	if(ret) {
-		loge("Execute err: '%s' expr val to valarg err.", keystub->keyword);
+		loge("Execute err: expr '%s' to lre_value err.", keystub->keyword);
 		return RET_DEAD_VAL;
 	}
 
@@ -186,6 +190,7 @@ static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ct
 		loge("Execute err: '%s' expr handler exec err.", keystub->keyword);
 		return RET_DEAD_VAL;
 	}
+	logi("Execute expr '%s' result: %d.", keystub->keyword, ret);
 
 	return ret;
 }
@@ -199,7 +204,7 @@ static int execute_syntax_func(struct syntax_func *func,
 
 	funcstub = func->keystub;
 
-	loge("Execute func '%s'.", funcstub->keyword);
+	logd("Execute func '%s'.", funcstub->keyword);
 	handle = funcstub->func_handler();
 	if(!handle) {
 		loge("Execute err: failed to call '%s' func_handler.", funcstub->keyword);
@@ -220,7 +225,7 @@ static int execute_syntax_func(struct syntax_func *func,
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
 			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
 			if(ret) {
-				loge("Execute err: '%s' expr val to valarg err.", argstub->keyword);
+				loge("Execute err: func arg '%s' to lre_value err.", argstub->keyword);
 				return RET_DEAD_VAL;
 			}
 
@@ -261,7 +266,7 @@ static int execute_syntax_call(struct syntax_call *call,
 
 	callstub = call->keystub;
 
-	loge("Execute call '%s'.", callstub->keyword);
+	logd("Execute call '%s'.", callstub->keyword);
 	handle = callstub->call_handler();
 	if(!handle) {
 		loge("Execute err: failed to call '%s' call_handler.", callstub->keyword);
@@ -282,8 +287,8 @@ static int execute_syntax_call(struct syntax_call *call,
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
 			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
 			if(ret) {
-				loge("Execute err: '%s' expr val to valarg err.", argstub->keyword);
-				return RET_DEAD_VAL;
+				loge("Execute err: call arg '%s' to lre_vaule err.", argstub->keyword);
+				return ret;
 			}
 
 			ret = argstub->arg_handler(handle, &arg);
@@ -361,7 +366,11 @@ static int execute_syntax_childs(struct syntax_root *root,
 				ret = execute_syntax_block(block, ctx);
 				break;
 			default:
-				return RET_DEAD_VAL;
+				ret = RET_DEAD_VAL;
+				break;
+		}
+		if(!vaild_lre_results(ret)) {
+			return RET_DEAD_VAL;
 		}
 
 		if(res == VAL_UNINITIALIZED)
@@ -379,6 +388,9 @@ static int execute_syntax_childs(struct syntax_root *root,
 			}
 		}
 
+		if((node->opt == SYNTAX_SYM_AND && !res) ||
+			   	(node->opt == SYNTAX_SYM_OR && res))
+			return res;
 		opt = node->opt;
 	}
 	return res;
