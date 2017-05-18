@@ -54,11 +54,11 @@ static int expr_matched_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 static struct lrc_stub_arg yarascan_args[] = {
 	{
 		.keyword  	 = "rule",
-		.description = "Type: string. Specify the path to a yarascan",
+		.description = "Type: string. yara rule file name",
 		.handler 	 = arg_rule_handler,
 	}, {
 		.keyword  	 = "target",
-		.description = "Type: string. Specify the path to a yarascan",
+		.description = "Type: string. ",
 		.handler 	 = arg_target_handler,
 	}
 };

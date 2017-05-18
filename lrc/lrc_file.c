@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <pwd.h>
 
+#include "../utils.h"
 #include "../lre.h"
 
 struct lrc_file {
@@ -88,7 +89,8 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
 		return LRE_RET_ERROR;
 
-	return (lreval->valint == file->exist);
+	/*FIXME: verify val first */
+	return lre_compare_int(file->exist, lreval->valint, opt);
 }
 
 static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
@@ -118,12 +120,13 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 		return strcmp(u, user);
 	}
 
-	return strcmp(lreval->valstring, user);
+	return lre_compare_string(user, lreval->valstring, opt);
 }
 
 static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
 	struct lrc_file *file;
+	unsigned long val;
 
 	file = (struct lrc_file *)handle;
 	if(file->state == STATE_EXEC_FAILED)
@@ -133,9 +136,9 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 		return LRE_RET_ERROR;
 
 	/*FIXME:*/
-	//hex2int();
+	val = str2hex((unsigned char *)lreval->valstring);
 
-	return LRE_RESULT_TRUE;
+	return lre_compare_int(file->permission, val, opt);
 }
 
 static struct lrc_stub_arg file_args[] = {

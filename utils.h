@@ -62,6 +62,28 @@ int is_double_digit(const char *str);
 
 #define  xrenew(p,count)  (p) = xrealloc((p),sizeof(*(p))*(count))
 
+/* conversion functions */
+static inline unsigned char str2hexnum(unsigned char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	return 0; /* foo */
+}
+
+static inline unsigned long str2hex(unsigned char *str)
+{
+	int value = 0;
+
+	while (*str) {
+		value = value << 4;
+		value |= str2hexnum(*str++);
+	}
+
+	return value;
+}
+
 #ifdef __cplusplus
 }
 #endif
