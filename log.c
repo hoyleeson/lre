@@ -9,7 +9,8 @@
 static enum logger_mode log_mode = LOG_MODE_QUIET;
 static enum logger_level log_level = LOG_DBG;
 
-FILE *logfp = NULL;  /* Only use for LOG_MODE_FILE */
+static FILE *logfp = NULL;  /* Only use for LOG_MODE_FILE */
+static void (*log_cbprint)(int, const char *) = NULL;
 
 static char level_tags[LOG_LEVEL_MAX + 1] = {
 	    'F', 'E', 'W', 'I', 'D', 'V',
@@ -20,11 +21,38 @@ static const char *log_mode_str[LOG_MODE_MAX + 1] = {
 	[LOG_MODE_STDERR] = "stderr",
 	[LOG_MODE_FILE] = "file",
 	[LOG_MODE_CLOUD] = "cloud",
+	[LOG_MODE_CALLBACK] = "callback",
 };
 
 __attribute__((weak)) const char *get_log_path(void)
 {
 	return LOG_FILE;
+}
+
+void default_cbprint(int level, const char *log)
+{
+	fputc(level_tags[level], stderr);
+	fputc(':', stderr);
+	fputs(log, stderr);
+	fputc('\n', stderr);
+	fflush(stderr);
+}
+
+void log_set_logpath(const char *path)
+{
+	if(logfp)
+		fclose(logfp);
+
+	logfp = fopen(path, "a+");
+	if(!logfp) {
+		log_mode = LOG_MODE_STDERR;
+	}
+	logv("log file:%s", path);
+}
+
+void log_set_callback(void (*cb)(int, const char *))
+{
+	log_cbprint = cb;
 }
 
 void log_print(int level, const char *fmt, ...)
@@ -56,10 +84,12 @@ void log_print(int level, const char *fmt, ...)
 		fflush(logfp);
 	} else if (log_mode == LOG_MODE_CLOUD) {
 		/* Skip Tag */
-	//	agent_log_print(level, buf + len);
+	} else if(log_mode == LOG_MODE_CALLBACK) {
+		if(log_cbprint)
+			log_cbprint(level, buf + len);
 	} else {
 		fputs(buf, stderr);
-		fputs("\n", stderr);
+		fputc('\n', stderr);
 		fflush(stderr);
 	}
 }
@@ -75,12 +105,14 @@ void log_init(enum logger_mode mode, enum logger_level level)
 	if(log_mode >= LOG_MODE_MAX || log_mode < 0)
 		log_mode = DEFAULT_LOG_LEVEL;
 
-	if(log_mode == LOG_MODE_FILE) {
+	if(log_mode == LOG_MODE_FILE && !logfp) {
 		logfp = fopen(get_log_path(), "a+");
 		if(!logfp) {
 			log_mode = LOG_MODE_STDERR;
 		}
 		logv("log file:%s", get_log_path());
+	} else if(log_mode == LOG_MODE_CALLBACK && !log_cbprint) {
+		log_cbprint = default_cbprint;
 	}
 	logi("log init. mode:%s, level:%c", log_mode_str[mode], level_tags[log_level]);
 }

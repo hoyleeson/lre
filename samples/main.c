@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "../lre.h"
-#include "../lrc/builtin_lrc.h"
 
 static char code1[] = "process(procname=\"sshd\", procpath=fuzzypath(path=\"/usr/*/sshd\")){running==1} && file(path=fuzzypath(basepath=processdir(procname=\"sshd\", procpath=fuzzypath(path=\"/usr/*/sshd\")), path=\"/etc/ssh/sshd_*\")){exist==1 && owner==root && permission==644}";
 
@@ -38,8 +37,6 @@ int main(int argc, char **argv)
 	int ret;
 	struct lre_result result;
 	lre_init();
-
-	lrc_builtin_init();
 
 	for(i=0; i<ARRAY_SIZE(code); i++) {
 		ret = lre_execute(code[i], &result);

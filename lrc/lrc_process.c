@@ -365,18 +365,6 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 	return lre_compare_int(found, 1, opt);
 }
 
-static int expr_cmdline_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
-{
-	struct lrc_process *process;
-
-	process = (struct lrc_process *)handle;
-
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
-		return LRE_RET_ERROR;
-
-	/* FIXME: unsupport now */
-	return LRE_RESULT_TRUE;
-}
 
 /****************************************************/
 
@@ -501,10 +489,6 @@ static struct lrc_stub_expr process_exprs[] = {
 		.keyword  	 = "user",
 		.description = "Check user who starts the process. example: user==root",
 		.handler 	 = expr_user_handler,
-	}, {
-		.keyword  	 = "cmdline",
-		.description = "Check Process cmdline. example: cmdline==\"-i\"",
-		.handler 	 = expr_cmdline_handler,
 	}
 };
 

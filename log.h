@@ -1,7 +1,7 @@
 #ifndef _FILES_WATCHD_LOG_H
 #define _FILES_WATCHD_LOG_H
 
-#define LOG_FILE 		"file_monitor.log"
+#define LOG_FILE 		"lre.log"
 
 #define LOG_TAG 		"LRE"
 #define LOG_BUF_SIZE 	(4096)
@@ -14,6 +14,7 @@ enum logger_mode {
 	LOG_MODE_STDERR,
 	LOG_MODE_FILE, 
 	LOG_MODE_CLOUD, 
+	LOG_MODE_CALLBACK, 
 	LOG_MODE_MAX, 
 };
 
@@ -32,6 +33,10 @@ enum logger_level {
 extern "C" {
 #endif
 
+/* only use for LOG_MODE_FILE mode */
+void log_set_logpath(const char *path);
+/* only use for LOG_MODE_CALLBACK mode */
+void log_set_callback(void (*cb)(int, const char *));
 
 void log_print(int priority, const char *fmt, ...);
 void log_init(enum logger_mode mode, enum logger_level level);

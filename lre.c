@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "interpreter.h"
+#include "lrc/builtin_lrc.h"
 
 
 static int lrc_arg_register(struct keyword_stub *parent, struct lrc_stub_arg *arg)
@@ -189,12 +190,15 @@ err:
 int lre_init(void)
 {
 	int ret;
-	log_init(LOG_MODE_STDERR, LOG_VERBOSE);
+	log_init(LOG_MODE_CALLBACK, LOG_VERBOSE);
+
 	ret = interpreter_init();
 	if(ret) {
 		loge("Interpreter initialize failed.");
 		return ret;
 	}
+
+	lrc_builtin_init();
 	return 0;
 }
 
