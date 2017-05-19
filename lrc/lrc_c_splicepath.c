@@ -18,7 +18,7 @@ struct lrc_splicepath {
 	char *path;
 };
 
-int splicepath_execute(lrc_obj_t *handle, struct lre_value *val)
+static int splicepath_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	char path[PATH_MAX] = {0};
 	int len = 0;
@@ -87,11 +87,11 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 static struct lrc_stub_arg splicepath_args[] = {
 	{
 		.keyword  	 = "basepath",
-		.description = "",
+		.description = "Type: string. Specify the basepath to a file",
 		.handler 	 = arg_basepath_handler,
 	}, {
 		.keyword  	 = "path",
-		.description = "",
+		.description = "Type: string. Specify the path to a file",
 		.handler 	 = arg_path_handler,
 	}
 };
@@ -107,7 +107,7 @@ static struct lrc_stub_call lrc_calls[] = {
 	}
 };
 
-struct lrc_module lrc_splicepath_mod = {
+static struct lrc_module lrc_splicepath_mod = {
 	.name = "lrc_call_splicepath",
 	.calls = lrc_calls,
 	.callcount = ARRAY_SIZE(lrc_calls),
@@ -123,3 +123,7 @@ int lrc_c_splicepath_init(void)
 	return ret;
 }
 
+void lrc_c_splicepath_release(void)
+{
+	lrc_module_unregister(&lrc_splicepath_mod);
+}

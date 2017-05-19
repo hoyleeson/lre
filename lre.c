@@ -5,6 +5,32 @@
 #include "interpreter.h"
 #include "lrc/builtin_lrc.h"
 
+static LIST_HEAD(lre_modulelists);
+
+struct lre_module {
+	struct lrc_module *module;
+	struct list_head entry;
+};
+
+static void lre_module_create(struct lrc_module *module)
+{
+	struct lre_module *lrm;
+
+	lrm = xzalloc(sizeof(*lrm));
+	lrm->module = module;
+	list_add_tail(&lrm->entry, &lre_modulelists);
+}
+
+static void lre_module_delete(struct lrc_module *module)
+{
+	struct lre_module *lrm, *tmp;
+
+	list_for_each_entry_safe(lrm, tmp, &lre_modulelists, entry) {
+		if(lrm->module == module) {
+			list_del(&lrm->entry);
+		}
+	}
+}
 
 static int lrc_arg_register(struct keyword_stub *parent, struct lrc_stub_arg *arg)
 {
@@ -180,10 +206,17 @@ int lrc_module_register(struct lrc_module *module)
 		ret = lrc_call_register(NULL, &module->calls[i]);
 		CHECK_ERR(ret, err);
 	}
+
+	lre_module_create(module);
 	return 0;
 err:
 	loge("Failed to register lrc module '%s'.", module->name);
 	return -EINVAL;
+}
+
+void lrc_module_unregister(struct lrc_module *module)
+{
+	lre_module_delete(module);
 }
 
 
@@ -199,6 +232,9 @@ int lre_init(void)
 	}
 
 	lrc_builtin_init();
+	lre_macro_init();
+
+	//interpreter_dump();
 	return 0;
 }
 
@@ -209,6 +245,7 @@ int lre_execute(const char *code, struct lre_result *res)
 
 void lre_release(void)
 {
+	lrc_builtin_release();
 	log_release();
 }
 

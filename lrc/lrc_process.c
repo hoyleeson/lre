@@ -29,7 +29,7 @@ struct process_info {
 
 struct process_info *processlist = NULL;
 
-void process_info_add(struct process_info *psinfo)
+static void process_info_add(struct process_info *psinfo)
 {
 	psinfo->next = processlist;
 	processlist = psinfo;
@@ -170,7 +170,7 @@ static struct process_info *get_process_info(int pid)
 	return psinfo;
 }
 
-int scan_processes(void)
+static int scan_processes(void)
 {
 	DIR *d;
 	struct dirent *de;
@@ -212,7 +212,7 @@ struct lrc_process {
 
 };
 
-void fill_spec_process(struct lrc_process *process)
+static void fill_spec_process(struct lrc_process *process)
 {
 	int ret;
 	struct process_info *psinfo = processlist;
@@ -255,7 +255,7 @@ void fill_spec_process(struct lrc_process *process)
 	}
 }
 
-int process_execute(lrc_obj_t *handle)
+static int process_execute(lrc_obj_t *handle)
 {
 	struct lrc_process *process;
 	if(processlist == NULL)
@@ -368,7 +368,7 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 
 /****************************************************/
 
-int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
+static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	int ret;
 	struct process_info *psinfo = processlist;
@@ -516,7 +516,7 @@ static struct lrc_stub_call lrc_calls[] = {
 	}
 };
 
-struct lrc_module lrc_process_mod = {
+static struct lrc_module lrc_process_mod = {
 	.name = "lrc_process",
 	.funcs = lrc_funcs,
 	.funccount = ARRAY_SIZE(lrc_funcs),
@@ -535,3 +535,7 @@ int lrc_process_init(void)
 	return ret;
 }
 
+void lrc_process_release(void)
+{
+	lrc_module_unregister(&lrc_process_mod);
+}

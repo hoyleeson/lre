@@ -65,7 +65,7 @@ static int expr_tcpstate_handler(lrc_obj_t *handle, int opt, struct lre_value *l
 static struct lrc_stub_arg network_args[] = {
 	{
 		.keyword  	 = "prototype",
-		.description = "",
+		.description = "prototype",
 		.handler 	 = arg_prototype_handler,
 	}
 };
@@ -73,15 +73,15 @@ static struct lrc_stub_arg network_args[] = {
 static struct lrc_stub_expr network_exprs[] = {
 	{
 		.keyword  	 = "port",
-		.description = "",
+		.description = "port",
 		.handler 	 = expr_port_handler,
 	}, {
 		.keyword  	 = "prototype",
-		.description = "",
+		.description = "prototype",
 		.handler 	 = expr_prototype_handler,
 	}, {
 		.keyword  	 = "tcpstate",
-		.description = "",
+		.description = "tcpstate",
 		.handler 	 = expr_tcpstate_handler,
 	}
 };
@@ -99,7 +99,7 @@ static struct lrc_stub_func lrc_funcs[] = {
 	}
 };
 
-struct lrc_module lrc_network_mod = {
+static struct lrc_module lrc_network_mod = {
 	.name = "lrc_network",
 	.funcs = lrc_funcs,
 	.funccount = ARRAY_SIZE(lrc_funcs),
@@ -113,5 +113,10 @@ int lrc_network_init(void)
 	if(ret)
 		printf("Failed to register '%s' modules \n", lrc_network_mod.name);
 	return ret;
+}
+
+void lrc_network_release(void)
+{
+	lrc_module_unregister(&lrc_network_mod);
 }
 

@@ -345,8 +345,12 @@ struct symbol_word *get_symbol_by_id(int sym);
 int get_symbol_type(int sym);
 const char *get_symbol_str(int sym);
 
+struct interp_context *interp_context_create(const char *code);
+void interp_context_destroy(struct interp_context *ctx);
+
 int interpreter_init(void);
 int interpreter_execute(const char *code, struct lre_result *res);
+void interpreter_dump(void);
 
 
 /* install/find keyword */

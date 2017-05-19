@@ -34,3 +34,12 @@ err:
 	return -EINVAL;
 }
 
+void lrc_builtin_release(void)
+{
+	lrc_file_release();
+	lrc_process_release();
+	lrc_network_release();
+
+	lrc_c_fuzzypath_release();
+	lrc_c_splicepath_release();
+}

@@ -38,7 +38,7 @@ struct fuzzydirent {
 	};
 };
 
-static path_add(char *path, char *new)
+static void path_add(char *path, char *new)
 {
 	strncat(path, new, PATH_ARR_MAX);
 	strncat(path, ":", PATH_ARR_MAX);
@@ -120,7 +120,7 @@ static int recurse_dir(char *path, int depth,
 }
 
 
-int fuzzy2path(char *path, char *outpath)
+static int fuzzy2path(char *path, char *outpath)
 {
 	char *token;
 	int i;
@@ -197,7 +197,7 @@ int fuzzy2path(char *path, char *outpath)
 }
 
 
-int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
+static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	char path[PATH_MAX] = {0};
 	int len = 0;
@@ -269,11 +269,11 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 static struct lrc_stub_arg fuzzypath_args[] = {
 	{
 		.keyword  	 = "basepath",
-		.description = "",
+		.description = "Type: string. Specify the basepath to a file",
 		.handler 	 = arg_basepath_handler,
 	}, {
 		.keyword  	 = "path",
-		.description = "",
+		.description = "Type: string. Specify the path to a file",
 		.handler 	 = arg_path_handler,
 	}
 };
@@ -305,3 +305,7 @@ int lrc_c_fuzzypath_init(void)
 	return ret;
 }
 
+void lrc_c_fuzzypath_release(void)
+{
+	lrc_module_unregister(&lrc_fuzzypath_mod);
+}

@@ -1,0 +1,22 @@
+
+# scan process config use for yara 
+
+define file_exist(_path)  	"file(path=$_path) {exist==1}"
+define file_owner_equal(_path, _owner) 		"file(path=$_path) {owner == $_owner}"
+define file_owner_unequal(_path, _owner) 	"file(path=$_path) {owner != $_owner}"
+define file_permission_equal(_path, _perm) 	"file(path=$_path) {permission == $_perm}"
+define file_permission_unequal(_path, _perm) "file(path=$_path) {permission != $_perm}"
+
+define process_running(_name) 			"process(procname=$_name) {running == 1}"
+define process_running(_name, _path) 	"process(procname=$_name, procpath=$_path) {running == 1}"
+
+define process_user_equal(_name, _owner) 		"process(procname=$_name) {running == 1 && owner == $_owner}"
+define process_user_equal(_name, _path, _owner) "process(procname=$_name, procpath=$_path) {running == 1 && owner == $_owner}"
+
+define process_user_unequal(_name, _owner) 			"process(procname=$_name) {running != 1 || owner != $_owner}"
+define process_user_unequal(_name, _path, _owner) 	"process(procname=$_name, procpath=$_path) {running != 1 || owner != $_owner}"
+
+define process_running_fuzzypath(_name, _fzpath, _owner) 	"process(procname=$_name, procpath=fuzzypath(path=$_fzpath)) {running != 1 || owner != $_owner}"
+
+include "samples/local_macro.lr"
+

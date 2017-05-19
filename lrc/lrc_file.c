@@ -203,7 +203,7 @@ static struct lrc_stub_func lrc_funcs[] = {
 	}
 };
 
-struct lrc_module lrc_file_mod = {
+static struct lrc_module lrc_file_mod = {
 	.name = "lrc_file",
 	.funcs = lrc_funcs,
 	.funccount = ARRAY_SIZE(lrc_funcs),
@@ -217,4 +217,10 @@ int lrc_file_init(void)
 	if(ret)
 		printf("Failed to register '%s' modules \n", lrc_file_mod.name);
 	return ret;
+}
+
+
+void lrc_file_release(void)
+{
+	lrc_module_unregister(&lrc_file_mod);
 }

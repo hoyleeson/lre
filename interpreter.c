@@ -194,7 +194,7 @@ struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec,
 }
 
 
-static struct interp_context *interp_context_create(const char *code)
+struct interp_context *interp_context_create(const char *code)
 {
 	struct interp_context *ctx;
 
@@ -220,13 +220,55 @@ static struct interp_context *interp_context_create(const char *code)
 	return ctx;
 }
 
-static void interp_context_destroy(struct interp_context *ctx)
+void interp_context_destroy(struct interp_context *ctx)
 {
 	free(ctx->wordbuf);
 	free(ctx->tokens);
 	if(ctx->details)
 		free(ctx->details);
 	free(ctx);
+}
+
+static char *keystub_type_str[] = {
+	[KEYSTUB_TYPE_UNKNOWN] = "unknown",
+	[KEYSTUB_TYPE_FUNC] = "func",
+	[KEYSTUB_TYPE_CALL] = "call",
+	[KEYSTUB_TYPE_ARG] = "arg",
+	[KEYSTUB_TYPE_EXPR] = "expr",
+	[KEYSTUB_TYPE_VAR] = "var",
+};
+
+#define dump_blank(l) do {int i; for(i=0; i<level; i++)printf("    "); }while(0)
+static void keyword_stub_dump(struct keyword_stub *keystub, int level)
+{
+	dump_blank(level);
+	printf("%s [%s]\n", keystub->keyword, keystub_type_str[keystub->type]);
+	dump_blank(level);
+	printf("\t%s\n", keystub->description);
+}
+
+static void keystub_vec_dump(keystub_vec_t *vec, int level)
+{
+	int i;
+	struct keyword_stub *keystub;
+
+	vector_foreach_active_slot(vec, keystub, i) {
+		if(!keystub)
+			continue;
+
+		keyword_stub_dump(keystub, level);
+		keystub_vec_dump(keystub->subvec, level + 1);
+	}
+	if(level%2 != 0)
+		printf("\n");
+}
+
+void interpreter_dump(void)
+{
+	keystub_vec_t *vec;
+
+	vec = get_root_keyvec();
+	keystub_vec_dump(vec, 0);
 }
 
 int interpreter_execute(const char *code, struct lre_result *res)

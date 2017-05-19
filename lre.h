@@ -67,6 +67,7 @@ struct lre_result {
 /* Failed code the same to errno */
 #define LRE_RET_ERROR 		(0xdeaddead)
 
+int lre_macro_init(void);
 
 int lre_calc_int(int a, int b, int op);
 double lre_calc_dobule(double a, double b, int op);
@@ -145,6 +146,7 @@ struct lrc_module {
 };
 
 int lrc_module_register(struct lrc_module *module);
+void lrc_module_unregister(struct lrc_module *module);
 
 #ifdef __cplusplus
 }
