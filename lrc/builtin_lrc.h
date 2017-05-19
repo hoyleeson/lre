@@ -6,6 +6,7 @@ int lrc_process_init(void);
 int lrc_network_init(void);
 
 int lrc_c_fuzzypath_init(void);
+int lrc_c_splicepath_init(void);
 
 
 int lrc_builtin_init(void);

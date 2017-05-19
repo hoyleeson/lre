@@ -14,6 +14,7 @@
 #include "../utils.h"
 #include "../lre.h"
 
+#define PATH_ARR_MAX  	(PATH_MAX * 10)
 
 struct process_info {
 	int pid;
@@ -56,6 +57,23 @@ char *getrealdir(char *path)
 	memset(path, 0, 1024);
 	strncpy(path, buf, 1024);
 	return path;
+}
+
+static char *path2dir(char *path, char *dir)
+{
+	char *p;
+
+	strncpy(dir, path, PATH_MAX);
+	p = strrchr(dir, '/');
+	if(!p) {
+		return dir;
+	} else if(p == dir) {
+		*(++p) = '\0';	
+	} else {
+		*p = '\0';
+	}
+
+	return dir;
 }
 
 static char *nexttoksep(char **strp, char *sep)
@@ -104,14 +122,6 @@ static struct process_info *get_process_info(int pid)
 		psinfo->binpath = NULL;
 	else
 		psinfo->binpath = strdup(path);
-
-	/*
-	ptr = getrealdir(buf);
-	if(ptr)
-		psinfo->binpath = strdup(ptr);
-	else
-		psinfo->binpath = NULL;
-	*/
 
 	sprintf(buf, "/proc/%d/stat", pid);
 	fd = open(buf, O_RDONLY);
@@ -237,7 +247,8 @@ void fill_spec_process(struct lrc_process *process)
 		}
 		if(ret) {
 			process->psinfo[process->count++] = psinfo;
-			printf("========>process:%s\n", process->procname);
+			printf("exec process func, process:%s, binpath:%s\n", 
+					psinfo->name, psinfo->binpath ? psinfo->binpath : "(unknown)");
 		}
 
 		psinfo = psinfo->next;
@@ -371,7 +382,17 @@ static int expr_cmdline_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 
 int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 {
+	int ret;
+	struct process_info *psinfo = processlist;
 	struct lrc_process *process;
+	char *patharr[PROCESS_COUNT_MAX];
+	int count = 0;
+	char *outpath;
+	int i;
+	int len = 0;
+
+	if(processlist == NULL)
+		scan_processes();
 
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
@@ -379,7 +400,67 @@ int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 		return -EINVAL;
 	}
 
-	fill_spec_process(process);
+	while(psinfo) {
+		ret = 1;
+
+		if(process->procname) {
+			if(!psinfo->name) {
+				psinfo = psinfo->next;
+				continue;
+			}
+			ret &= !strcmp(process->procname, psinfo->name);
+		}
+		if(process->procpath) {
+			int r;
+			char *ptr;
+
+			if(!psinfo->binpath) {
+				psinfo = psinfo->next;
+				continue;
+			}
+			r = !strncmp(process->procpath, psinfo->binpath, strlen(psinfo->binpath));
+
+			ptr = process->procpath;
+			while((ptr = strchr(ptr, ':')) != NULL) {
+				ptr++;
+				r |= !strncmp(ptr, psinfo->binpath, strlen(psinfo->binpath));
+			}
+			ret &= r;
+		}
+		printf("ret:%d, pspath:%s\n", ret, psinfo->binpath ? psinfo->binpath : "(unknown)");
+		if(ret && psinfo->binpath) {
+			int repeat = 0;
+			/* filter repeat path */
+			for(i=0; i<count; i++) {
+				if(!strcmp(patharr[i], psinfo->binpath))
+					repeat = 1;
+			}
+			if(!repeat) {
+				patharr[count++] = psinfo->binpath;
+				printf("Exec processdir call, process:%s, binpath:%s\n", 
+					psinfo->name, psinfo->binpath);
+			}
+		}
+
+		psinfo = psinfo->next;
+	}
+
+	if(count == 0) {
+		printf("Exec processdir call, not found in line with process.\n");
+		return 0;
+	}
+
+	outpath = xzalloc(sizeof(PATH_ARR_MAX));
+
+	for(i=0; i< count; i++) {
+		char dir[PATH_MAX] = {0};
+		len += snprintf(outpath + len, PATH_ARR_MAX - len, "%s:", 
+				path2dir(patharr[i], dir));
+	}
+	outpath[len - 1] = '\0';
+	
+	val->valstring = outpath;
+	val->type = LRE_ARG_TYPE_STRING;
 
 	process->state = STATE_EXEC_SUCCESS;
 	return 0;

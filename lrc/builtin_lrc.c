@@ -24,6 +24,9 @@ int lrc_builtin_init(void)
 
 	ret = lrc_c_fuzzypath_init();
 	CHECK_ERR(ret, "fuzzypath");
+	ret = lrc_c_splicepath_init();
+	CHECK_ERR(ret, "splicepath");
+
 
 	loge("Logic rule component initialize success");
 	return 0;
