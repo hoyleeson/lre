@@ -121,7 +121,7 @@ static void lre_macro_add(struct lre_macro *macro)
 	macro_count++;
 }
 
-static void lre_macro_dump(void)
+static __attribute__((unused)) void lre_macro_dump(void)
 {
 	int i;
 	struct lre_macro *macro;
@@ -359,12 +359,11 @@ out:
 #define _FLAGS_FOLLOWLINE 	(2)
 static int read_macro_line(char *buf, int maxlen, FILE *confp, int flags)
 {
+	char *p;
+	int len;
 
 repeat:
     if (xgetline(buf, maxlen, confp)) {
-		char *p;
-		int len;
-
         /* if the last character is a newline, shorten the string by 1 byte */
         len = strlen(buf);
         if (buf[len - 1] == '\n') {
@@ -436,7 +435,7 @@ int lre_macro_init(void)
 	}
 
 	logi("Load macro success. count:%d", macro_count);
-	lre_macro_dump();
+	/*	lre_macro_dump(); */
 	return 0;
 }
 

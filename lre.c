@@ -136,6 +136,36 @@ err:
 	return -EINVAL;
 }
 
+static void lrc_func_unregister(struct lrc_stub_func *func)
+{
+	struct keyword_stub *kstub;
+	keystub_vec_t *vec;
+
+	vec = get_root_keyvec();
+
+	kstub = find_stub_by_keyword(vec, func->keyword);
+	if(!kstub)
+		return;
+
+	func_keyword_uninstall(kstub);
+}
+
+static void lrc_call_unregister(struct lrc_stub_call *call)
+{
+	struct keyword_stub *kstub;
+	keystub_vec_t *vec;
+
+	vec = get_root_keyvec();
+
+	kstub = find_stub_by_keyword(vec, call->keyword);
+	if(!kstub)
+		return;
+
+	call_keyword_uninstall(kstub);
+}
+
+
+
 #define EXEC_DETAIL_GAP 		(4)
 #define EXEC_DETAIL_UNIT_MAX 	(64)
 #define EXEC_DETAIL_LEN_MAX 	(100 * EXEC_DETAIL_UNIT_MAX)
@@ -220,6 +250,21 @@ err:
 
 void lrc_module_unregister(struct lrc_module *module)
 {
+	int i;
+
+	if(!module) {
+		loge("Failed to unregister module. module NULL.");
+		return;
+	}
+
+	for(i=0; i<module->funccount; i++) {
+		lrc_func_unregister(&module->funcs[i]);
+	}
+
+	for(i=0; i<module->callcount; i++) {
+		lrc_call_unregister(&module->calls[i]);
+	}
+
 	lre_module_delete(module);
 }
 

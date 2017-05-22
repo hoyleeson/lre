@@ -101,10 +101,31 @@ static struct keyword_stub *keyword_stub_create(int type, const char *keyword,
 	keystub->type = type;
 	keystub->keyword = strdup(keyword);
 	keystub->data = data;
-	keystub->subvec = vector_init(0);
+
+	if(type == KEYSTUB_TYPE_FUNC || 
+			type == KEYSTUB_TYPE_CALL)
+		keystub->subvec = vector_init(0);
 
 	return keystub;
 }
+
+static void keyword_stub_destroy(struct keyword_stub *keystub)
+{
+	int i;
+	struct keyword_stub *substub;
+
+	free(keystub->keyword);
+
+	vector_foreach_active_slot(keystub->subvec, substub, i) {
+		if(!substub)
+			continue;
+		free(substub);
+	}
+	if(keystub->subvec)
+		vector_free(keystub->subvec);
+	free(keystub);
+}
+
 
 struct keyword_stub *func_keyword_install(const char *keyword, void *data,
 	   	lrc_obj_t *(*handler)(void),
@@ -120,6 +141,11 @@ struct keyword_stub *func_keyword_install(const char *keyword, void *data,
 	return keystub;
 }
 
+void func_keyword_uninstall(struct keyword_stub *keystub)
+{
+	keyword_stub_destroy(keystub);
+}
+
 struct keyword_stub *call_keyword_install(const char *keyword, void *data,
 	   	lrc_obj_t *(*handler)(void),
 		struct keyword_stub *parent)
@@ -132,6 +158,11 @@ struct keyword_stub *call_keyword_install(const char *keyword, void *data,
 
 	keyword_stub_add(keystub, parent);
 	return keystub;
+}
+
+void call_keyword_uninstall(struct keyword_stub *keystub)
+{
+	keyword_stub_destroy(keystub);
 }
 
 struct keyword_stub *arg_keyword_install(const char *keyword, void *data,
@@ -200,7 +231,7 @@ struct interp_context *interp_context_create(const char *code)
 
 	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
 
-	ctx->code = code;
+	ctx->code = strdup(code);
 	ctx->root = NULL;
 
 	ctx->wordbuf = xzalloc(CODE_MAX_LEN);
@@ -222,7 +253,8 @@ struct interp_context *interp_context_create(const char *code)
 
 int interp_context_reload_code(struct interp_context *ctx, const char *code)
 {
-	ctx->code = code;
+	free(ctx->code);
+	ctx->code = strdup(code);
 
 	memset(ctx->wordbuf, 0, CODE_MAX_LEN);
 	memset(ctx->tokens, 0, sizeof(struct lex_token) * ctx->tokencap);
@@ -242,6 +274,7 @@ int interp_context_reload_code(struct interp_context *ctx, const char *code)
 
 void interp_context_destroy(struct interp_context *ctx)
 {
+	free(ctx->code);
 	free(ctx->wordbuf);
 	free(ctx->tokens);
 	if(ctx->details)
@@ -311,7 +344,7 @@ repeat:
 	}
 
 	interp_context_refresh(ctx);
-	dump_lex_tokens(ctx);
+	/*	dump_lex_tokens(ctx); */
 
 	ret = interp_preprocess(ctx);
 	if(ret == PREPROCESS_RES_REPEAT)
@@ -329,7 +362,7 @@ repeat:
 	}
 
 	interp_context_refresh(ctx);
-	//dump_syntax_tree(ctx->root);
+	/*	dump_syntax_tree(ctx->root); */
 	ret = interp_semantic_analysis(ctx);
 	if(ret) {
 		loge("Interpreter err: semantic analysis error.");
@@ -359,3 +392,7 @@ int interpreter_init(void)
 	return 0;
 }
 
+void interpreter_release(void)
+{
+
+}

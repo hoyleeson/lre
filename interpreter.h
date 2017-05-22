@@ -227,7 +227,7 @@ struct lex_token {
 };
 
 struct interp_context {
-	const char *code;
+	char *code;
 
 	/* Use for lexer analysis and syntax parse */
 	char *wordbuf;
@@ -386,5 +386,7 @@ struct keyword_stub *var_keyword_install(const char *keyword, void *data,
 struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec,
 		const char *keyword);
 
+void func_keyword_uninstall(struct keyword_stub *keystub);
+void call_keyword_uninstall(struct keyword_stub *keystub);
 
 #endif
