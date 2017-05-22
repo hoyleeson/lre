@@ -337,6 +337,9 @@ static inline struct lex_token *read_token(struct interp_context *ctx)
 void dump_syntax_tree(struct syntax_root *root);
 void dump_lex_tokens(struct interp_context *ctx);
 
+#define PREPROCESS_RES_REPEAT 		(1)
+int interp_preprocess(struct interp_context *ctx);
+
 int interp_lexer_analysis(struct interp_context *ctx);
 int interp_syntax_parse(struct interp_context *ctx);
 int interp_semantic_analysis(struct interp_context *ctx);
@@ -348,10 +351,12 @@ const char *get_symbol_str(int sym);
 
 struct interp_context *interp_context_create(const char *code);
 void interp_context_destroy(struct interp_context *ctx);
+int interp_context_reload_code(struct interp_context *ctx, const char *code);
 
 int interpreter_init(void);
 int interpreter_execute(const char *code, struct lre_result *res);
 void interpreter_dump(void);
+
 
 
 /* install/find keyword */

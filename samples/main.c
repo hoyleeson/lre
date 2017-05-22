@@ -21,6 +21,8 @@ static char code6[] = "process(procname=\"vi\", procpath=fuzzypath(path=\"/usr/b
 /* test splicepath */
 static char code7[] = "process(procname=\"vi\", procpath=fuzzypath(path=\"/usr/bin/*\")){running==1} && file(path=splicepath(basepath=processdir(procname=\"vi\", procpath=fuzzypath(path=\"/usr/*/*\")), path=\"../../etc/vim/vimrc\")){exist==1 && owner==root && permission==644}";
 
+static char code8[] = "file_exist(\"/usr/bin/apt\")";
+
 static char *code[] = {
 #if 0
 	code1,
@@ -31,6 +33,7 @@ static char *code[] = {
 	code6,
 	code7,
 #endif
+	code8,
 };
 
 int main(int argc, char **argv)

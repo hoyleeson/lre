@@ -36,7 +36,7 @@ static int lrc_arg_register(struct keyword_stub *parent, struct lrc_stub_arg *ar
 {
 	struct keyword_stub *kstub;
 
-	kstub = arg_keyword_install(arg->keyword, arg->description, arg->handler, parent);
+	kstub = arg_keyword_install(arg->keyword, arg, arg->handler, parent);
 	if(!kstub) {
 		loge("Failed to register lrc arg '%s'.", arg->keyword);
 		return -EINVAL;
@@ -49,7 +49,7 @@ static int lrc_expr_register(struct keyword_stub *parent, struct lrc_stub_expr *
 {
 	struct keyword_stub *kstub;
 
-	kstub = expr_keyword_install(expr->keyword, expr->description, expr->handler, parent);
+	kstub = expr_keyword_install(expr->keyword, expr, expr->handler, parent);
 	if(!kstub) {
 		loge("Failed to register lrc expr '%s'.", expr->keyword);
 		return -EINVAL;
@@ -62,7 +62,7 @@ static int lrc_var_register(struct keyword_stub *parent, struct lrc_stub_var *va
 {
 	struct keyword_stub *kstub;
 
-	kstub = var_keyword_install(var->keyword, var->description, var->handler, parent);
+	kstub = var_keyword_install(var->keyword, var, var->handler, parent);
 	if(!kstub) {
 		loge("Failed to register lrc var '%s'.", var->keyword);
 		return -EINVAL;
@@ -78,7 +78,11 @@ static int lrc_call_register(struct keyword_stub *parent, struct lrc_stub_call *
 	int ret;
 	struct keyword_stub *kstub;
 
-	kstub = call_keyword_install(call->keyword, call->description, call->handler, parent);
+	if(!call->exec) {
+		loge("Lrc call->exec callback mast be defined");	
+		return -EINVAL;
+	}
+	kstub = call_keyword_install(call->keyword, call, call->handler, parent);
 	if(!kstub) {
 		loge("Failed to register lrc call '%s'.", call->keyword);
 		return -EINVAL;
@@ -104,7 +108,7 @@ static int lrc_func_register(struct keyword_stub *parent, struct lrc_stub_func *
 	int ret;
 	struct keyword_stub *kstub;
 
-	kstub = func_keyword_install(func->keyword, func->description, func->handler, parent);
+	kstub = func_keyword_install(func->keyword, func, func->handler, parent);
 	if(!kstub) {
 		loge("Failed to register lrc func '%s'.", func->keyword);
 		return -EINVAL;
@@ -246,6 +250,8 @@ int lre_execute(const char *code, struct lre_result *res)
 void lre_release(void)
 {
 	lrc_builtin_release();
+
+	lre_macro_release();
 	log_release();
 }
 

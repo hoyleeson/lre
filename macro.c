@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -6,9 +7,8 @@
 
 #define LR_GLOBAL_MACRO_PATH 	"global_macro.lr"
 
-#define MACRO_ARG_COUNT_MAX 	(16)
-
 #define DEFAULT_MACRO_HLIST_BIT (8)
+
 static int macro_hlist_cap_bits;
 static int macro_count;
 static struct hlist_head *macro_hlists;
@@ -33,11 +33,11 @@ struct lre_macro_token {
 
 struct lre_macro {
 	char *keyword;
-	int argcount;
-	struct lre_macro_arg args[MACRO_ARG_COUNT_MAX];
+	int argc;
+	struct lre_macro_arg args[LRE_MACRO_ARGC_MAX];
 
 	struct lre_macro_token *token;
-	int tokencount;
+	int tokencnt;
 
 	char *macro;
 	struct hlist_node hnode;
@@ -46,9 +46,67 @@ struct lre_macro {
 
 struct lre_macro_token *read_macro_token(struct lre_macro *macro, int i)
 {
-	if(i >= macro->tokencount)
+	if(i >= macro->tokencnt)
 		return NULL;
 	return &macro->token[i];
+}
+
+struct lre_macro *lre_find_macro(const char *str, int argc)
+{
+	int hashidx;
+	struct lre_macro *macro;
+
+	hashidx = hash_str(str, macro_hlist_cap_bits);
+
+	hlist_for_each_entry(macro, &macro_hlists[hashidx], hnode) {
+		if(!strcmp(macro->keyword, str) && macro->argc == argc) {
+			return macro;	
+		}
+	}
+	return NULL;
+}
+
+int lre_has_macro(const char *str)
+{
+	int hashidx;
+	struct lre_macro *macro;
+
+	hashidx = hash_str(str, macro_hlist_cap_bits);
+
+	hlist_for_each_entry(macro, &macro_hlists[hashidx], hnode) {
+		if(!strcmp(macro->keyword, str)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+char *lre_create_code_by_macro(struct lre_macro *macro, 
+		int argc, const char **args)
+{
+	int i;
+	int len = 0;
+	char *ptr;
+	int idx;
+	char code[CODE_MAX_LEN] = {0};
+
+	if(macro->argc != argc)
+		return NULL;
+
+	for(i=0; i<macro->tokencnt; i++) {
+		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD) {
+			ptr = macro->token[i].wordptr;
+			len += snprintf(code + len, CODE_MAX_LEN - len, "%s",
+					ptr);
+		} else if(macro->token[i].type == MACRO_TOKEN_TYPE_ARG) {
+			idx = macro->token[i].argindex;
+			len += snprintf(code + len, CODE_MAX_LEN - len, "%s", 
+					args[idx]);
+		}
+	}
+
+	ptr = strdup(code);
+	return ptr;
 }
 
 
@@ -74,11 +132,11 @@ static void lre_macro_dump(void)
 			int j;
 
 			printf("%s\n", macro->macro);
-			printf("macro keyword:'%s', arg count:%d\n", macro->keyword, macro->argcount);
-			for(j = 0; j < macro->argcount; j++)
+			printf("macro keyword:'%s', arg count:%d\n", macro->keyword, macro->argc);
+			for(j = 0; j < macro->argc; j++)
 				printf("macro arg[%d]: '%s'\n", j, macro->args[j].keyword);
 
-			for(j = 0; j < macro->tokencount; j++) {
+			for(j = 0; j < macro->tokencnt; j++) {
 				mtoken = read_macro_token(macro, j);
 				if(mtoken->type == MACRO_TOKEN_TYPE_ARG) {
 					printf("macro token[%d]: (arg). '%s' argindex %d\n", 
@@ -97,7 +155,7 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 	int cnt = 0;
 	char *ptr, *p;
 	struct lre_macro_arg *arg;
-	struct lre_macro_token token[2 * MACRO_ARG_COUNT_MAX + 1];
+	struct lre_macro_token token[2 * LRE_MACRO_ARGC_MAX + 1];
 
 	ptr = content;
 
@@ -108,7 +166,7 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 	while(strchr(ptr, '$')) {
 		p = ptr;
 		ptr++;
-		for(i=0; i<macro->argcount; i++) {
+		for(i=0; i<macro->argc; i++) {
 			arg = &macro->args[i];
 			if(!strncmp(ptr, arg->keyword, arg->wordlen)) {
 				*p = '\0';
@@ -133,7 +191,7 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 		else
 			macro->token[i].argindex = token[i].argindex;
 	}
-	macro->tokencount = cnt;
+	macro->tokencnt = cnt;
 
 	return 0;
 }
@@ -150,7 +208,7 @@ static int lre_macro_arg_parse(struct interp_context *ctx,
 	token = read_token(ctx);
 	if(!token || (token->type != TOKEN_TYPE_SYMBOL ) || 
 			(token->symbol != SYNTAX_SYM_START_PARENTHESIS)) {
-		loge("Macro err: invaild macro name");
+		loge("Macro err: invaild macro format");
 		return -EINVAL;
 	}
 
@@ -166,7 +224,7 @@ static int lre_macro_arg_parse(struct interp_context *ctx,
 		return 0;
 	}
 
-	for(i=0; i<MACRO_ARG_COUNT_MAX;	i++) {
+	for(i=0; i<LRE_MACRO_ARGC_MAX;	i++) {
 		arg = args + i;
 		token = read_token(ctx);
 		if(!token || (token->type != TOKEN_TYPE_KEYWORD)) {
@@ -195,7 +253,7 @@ static int lre_macro_arg_parse(struct interp_context *ctx,
 		}
 	}
 
-	loge("Macro err: macro args count no more than %d.", MACRO_ARG_COUNT_MAX);
+	loge("Macro err: macro args count no more than %d.", LRE_MACRO_ARGC_MAX);
 	return -EINVAL;
 }
 
@@ -218,13 +276,13 @@ static int lre_macro_parse(struct interp_context *ctx)
 	macro->keyword = strdup(token->word);
 	logv("macro: %s", macro->keyword);
 
-	macro->argcount = lre_macro_arg_parse(ctx, macro->args);
-	if(macro->argcount < 0) {
+	macro->argc = lre_macro_arg_parse(ctx, macro->args);
+	if(macro->argc < 0) {
 		loge("Macro err: parse macro args error.");
 		return -EINVAL;
 	}
 
-	logd("Macro: macro args count:%d.", macro->argcount);
+	logd("Macro: macro args count:%d.", macro->argc);
 	token = read_token(ctx);
 	if(!token || (token->type != TOKEN_TYPE_STRING)) {
 		loge("Macro err: not found macro content.");
@@ -353,6 +411,7 @@ static int lre_macro_conf_load(const char *path)
 		lre_macro_conf_parse(buf);
 	}
 
+	free(buf);
 	return 0;
 }
 
@@ -373,13 +432,37 @@ int lre_macro_init(void)
 	ret = lre_macro_conf_load(LR_GLOBAL_MACRO_PATH);
 	if(ret) {
 		loge("Failed to load macro.");
+		return -EINVAL;
 	}
 
+	logi("Load macro success. count:%d", macro_count);
 	lre_macro_dump();
 	return 0;
 }
 
 void lre_macro_release(void)
 {
+	int i;
+	struct hlist_node *safe;
+	struct lre_macro *macro;
 
+	for (i = 0; i < (1 << macro_hlist_cap_bits); ++i) {
+		hlist_for_each_entry_safe(macro, safe, &macro_hlists[i], hnode) {
+			int j;
+
+			hlist_del(&macro->hnode);
+			free(macro->keyword);
+
+			for(j=0; j<macro->argc; j++) {
+				free(macro->args[j].keyword);
+			}
+
+			for(j=0; j<macro->tokencnt; j++) {
+				if(macro->token[j].type == MACRO_TOKEN_TYPE_WORD)
+					free(macro->token[j].wordptr);
+			}
+			free(macro->token);
+			free(macro);
+		}
+	}
 }

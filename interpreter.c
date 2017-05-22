@@ -220,12 +220,33 @@ struct interp_context *interp_context_create(const char *code)
 	return ctx;
 }
 
+int interp_context_reload_code(struct interp_context *ctx, const char *code)
+{
+	ctx->code = code;
+
+	memset(ctx->wordbuf, 0, CODE_MAX_LEN);
+	memset(ctx->tokens, 0, sizeof(struct lex_token) * ctx->tokencap);
+	ctx->tokenidx = 0;
+	ctx->tokencnt = 0;
+
+	ctx->wordptr = ctx->wordbuf;
+	ctx->codeptr = (char *)ctx->code;
+
+	ctx->results = LRE_RESULT_UNKNOWN;
+	ctx->errcode = LRE_RET_OK;
+	ctx->details = NULL;
+
+	ctx->context = NULL;
+	return 0;
+}
+
 void interp_context_destroy(struct interp_context *ctx)
 {
 	free(ctx->wordbuf);
 	free(ctx->tokens);
 	if(ctx->details)
 		free(ctx->details);
+
 	free(ctx);
 }
 
@@ -281,6 +302,7 @@ int interpreter_execute(const char *code, struct lre_result *res)
 
 	ctx = interp_context_create(code);
 
+repeat:
 	ret = interp_lexer_analysis(ctx);
 	if(ret) {
 		loge("Interpreter err: lexer analysis error.");
@@ -289,6 +311,15 @@ int interpreter_execute(const char *code, struct lre_result *res)
 	}
 
 	interp_context_refresh(ctx);
+	dump_lex_tokens(ctx);
+
+	ret = interp_preprocess(ctx);
+	if(ret == PREPROCESS_RES_REPEAT)
+		goto repeat;
+	else if(ret < 0) {
+		loge("Interpreter err: preprocess error.");
+		return -EINVAL;
+	}
 
 	ret = interp_syntax_parse(ctx);
 	if(ret) {
