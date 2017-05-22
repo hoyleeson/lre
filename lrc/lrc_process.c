@@ -282,7 +282,6 @@ static lrc_obj_t *func_process_handler(void)
 	if(!process) {
 		return (lrc_obj_t *)0;
 	}
-	process->base.execfunc = process_execute;
 
 	return (lrc_obj_t *)process;
 }
@@ -462,7 +461,6 @@ static lrc_obj_t *func_processdir_handler(void)
 	if(!process) {
 		return (lrc_obj_t *)0;
 	}
-	process->base.execcall = processdir_execute;
 
 	return (lrc_obj_t *)process;
 }
@@ -497,6 +495,7 @@ static struct lrc_stub_func lrc_funcs[] = {
 		.keyword 	 = "process",
 		.description = "Check process user,cmdline,running or not, etc.",
 		.handler 	 = func_process_handler,
+		.exec 		 = process_execute,
 
 		.args 	   = process_args,
 		.argcount  = ARRAY_SIZE(process_args),
@@ -510,6 +509,7 @@ static struct lrc_stub_call lrc_calls[] = {
 		.keyword 	 = "processdir",
 		.description = "Get process directory.",
 		.handler 	 = func_processdir_handler,
+		.exec 		 = processdir_execute,
 
 		.args 	   = process_args,
 		.argcount  = ARRAY_SIZE(process_args),

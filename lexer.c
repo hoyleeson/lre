@@ -240,6 +240,7 @@ done:
 	return res;
 }
 
+/* FIXME: token expand */
 
 static int lexer_read_token(struct interp_context *ctx)
 {

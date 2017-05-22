@@ -232,7 +232,6 @@ static lrc_obj_t *func_fuzzypath_handler(void)
 	if(!fuzzypath) {
 		return (lrc_obj_t *)0;
 	}
-	fuzzypath->base.execcall = fuzzypath_execute;
 
 	fuzzypath->basepath = NULL;
 	fuzzypath->path = NULL;
@@ -283,6 +282,7 @@ static struct lrc_stub_call lrc_calls[] = {
 		.keyword 	 = "fuzzypath",
 		.description = "Get path by fuzzypath.",
 		.handler 	 = func_fuzzypath_handler,
+		.exec 		 = fuzzypath_execute,
 
 		.args 	   = fuzzypath_args,
 		.argcount  = ARRAY_SIZE(fuzzypath_args),

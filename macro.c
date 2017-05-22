@@ -6,82 +6,230 @@
 
 #define LR_GLOBAL_MACRO_PATH 	"global_macro.lr"
 
-
-#define CONF_FLAGS_NEWLINE 		(1)
-#define CONF_FLAGS_FOLLOWLINE 	(2)
-
 #define MACRO_ARG_COUNT_MAX 	(16)
+
+#define DEFAULT_MACRO_HLIST_BIT (8)
+static int macro_hlist_cap_bits;
+static int macro_count;
+static struct hlist_head *macro_hlists;
+
+
 struct lre_macro_arg {
 	char *keyword;
+	int wordlen; /* Reduce repeated computation */
+};
+
+
+#define MACRO_TOKEN_TYPE_ARG 	(1)
+#define MACRO_TOKEN_TYPE_WORD 	(2)
+
+struct lre_macro_token {
+	int type;
+	union {
+		int argindex;
+		char *wordptr;
+	};
 };
 
 struct lre_macro {
 	char *keyword;
-	char *content;
+	int argcount;
 	struct lre_macro_arg args[MACRO_ARG_COUNT_MAX];
-	int count;
+
+	struct lre_macro_token *token;
+	int tokencount;
+
+	char *macro;
+	struct hlist_node hnode;
 };
+
+
+struct lre_macro_token *read_macro_token(struct lre_macro *macro, int i)
+{
+	if(i >= macro->tokencount)
+		return NULL;
+	return &macro->token[i];
+}
+
+
+static void lre_macro_add(struct lre_macro *macro)
+{
+	int hashidx;
+
+	/* FIXME: expand hashlist*/
+
+	hashidx = hash_str(macro->keyword, macro_hlist_cap_bits);
+	hlist_add_head(&macro->hnode, &macro_hlists[hashidx]);
+	macro_count++;
+}
+
+static void lre_macro_dump(void)
+{
+	int i;
+	struct lre_macro *macro;
+	struct lre_macro_token *mtoken;
+
+	for (i = 0; i < (1 << macro_hlist_cap_bits); ++i) {
+		hlist_for_each_entry(macro, &macro_hlists[i], hnode) {
+			int j;
+
+			printf("%s\n", macro->macro);
+			printf("macro keyword:'%s', arg count:%d\n", macro->keyword, macro->argcount);
+			for(j = 0; j < macro->argcount; j++)
+				printf("macro arg[%d]: '%s'\n", j, macro->args[j].keyword);
+
+			for(j = 0; j < macro->tokencount; j++) {
+				mtoken = read_macro_token(macro, j);
+				if(mtoken->type == MACRO_TOKEN_TYPE_ARG) {
+					printf("macro token[%d]: (arg). '%s' argindex %d\n", 
+							j, macro->args[mtoken->argindex].keyword, mtoken->argindex);
+				} else
+					printf("macro token[%d]: (content). '%s'\n", j, mtoken->wordptr);
+			}
+			printf("\n");
+		}
+	}
+}
+
+static int lre_macro_content2token(struct lre_macro *macro, char *content)
+{
+	int i;
+	int cnt = 0;
+	char *ptr, *p;
+	struct lre_macro_arg *arg;
+	struct lre_macro_token token[2 * MACRO_ARG_COUNT_MAX + 1];
+
+	ptr = content;
+
+	token[cnt].type = MACRO_TOKEN_TYPE_WORD;
+	token[cnt].wordptr = ptr;
+	cnt++;
+
+	while(strchr(ptr, '$')) {
+		p = ptr;
+		ptr++;
+		for(i=0; i<macro->argcount; i++) {
+			arg = &macro->args[i];
+			if(!strncmp(ptr, arg->keyword, arg->wordlen)) {
+				*p = '\0';
+				token[cnt].type = MACRO_TOKEN_TYPE_ARG;
+				token[cnt].argindex = i;
+				cnt++;
+
+				ptr += arg->wordlen;
+				token[cnt].type = MACRO_TOKEN_TYPE_WORD;
+				token[cnt].wordptr = ptr;
+				cnt++;
+				break;
+			}
+		}
+	}
+
+	macro->token = xzalloc(sizeof(struct lre_macro_token) * cnt);
+	for(i=0; i<cnt; i++) {
+		macro->token[i].type = token[i].type;
+		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD)
+			macro->token[i].wordptr = strdup(token[i].wordptr);
+		else
+			macro->token[i].argindex = token[i].argindex;
+	}
+	macro->tokencount = cnt;
+
+	return 0;
+}
 
 static int lre_macro_arg_parse(struct interp_context *ctx, 
 		struct lre_macro_arg *args)
 {
-	int i;
+	int i = 0;
 	struct lex_token *token;
+	struct lre_macro_arg *arg;
+
+	logd("Macro: parse macro argument.");
+
+	token = read_token(ctx);
+	if(!token || (token->type != TOKEN_TYPE_SYMBOL ) || 
+			(token->symbol != SYNTAX_SYM_START_PARENTHESIS)) {
+		loge("Macro err: invaild macro name");
+		return -EINVAL;
+	}
 
 	token = peek_curr_token(ctx);
-	if(!token)
+	if(!token) {
+		loge("Macro err: failed to get arg token");
 		return -EINVAL;
+	}
 
 	if(token->type == TOKEN_TYPE_SYMBOL && 
-			token->symbol == SYNTAX_SYM_START_PARENTHESIS) {
+			token->symbol == SYNTAX_SYM_END_PARENTHESIS) {
 		token = read_token(ctx);
 		return 0;
 	}
 
 	for(i=0; i<MACRO_ARG_COUNT_MAX;	i++) {
+		arg = args + i;
 		token = read_token(ctx);
-		if(!token || (token->type == TOKEN_TYPE_KEYWORD))
+		if(!token || (token->type != TOKEN_TYPE_KEYWORD)) {
+			loge("Macro err: invaild argument keyword");
 			return -EINVAL;
+		}
 
-		args->keyword = token->word;
+		arg->keyword = strdup(token->word);
+		arg->wordlen = strlen(arg->keyword);
+		logv("arg[%d]: %s", i, arg->keyword);
 
-		token = peek_curr_token(ctx);
-		if(!token)
+		/* Expect ',' or ')' */
+		token = read_token(ctx);
+		if(!token || token->type != TOKEN_TYPE_SYMBOL) {
+			loge("Macro err: failed to get arg token.");
 			return -EINVAL;
+		}
 
-		if(token->type == TOKEN_TYPE_SYMBOL && 
-				token->symbol == SYNTAX_SYM_START_PARENTHESIS) {
-			token = read_token(ctx);
-			return 0;
+		if(token->symbol == SYNTAX_SYM_COMMA) {
+			continue;
+		} else if(token->symbol == SYNTAX_SYM_END_PARENTHESIS) {
+			return i + 1;
+		} else {
+			loge("Macro err: unexpect arg token:'%s'", token->word);	
+			return -EINVAL;
 		}
 	}
 
-	return 0;
+	loge("Macro err: macro args count no more than %d.", MACRO_ARG_COUNT_MAX);
+	return -EINVAL;
 }
 
 static int lre_macro_parse(struct interp_context *ctx)
 {
-	int ret;
 	char *ptr;
 	struct lex_token *token;
 	struct lre_macro *macro;
 
 	macro = xzalloc(sizeof(*macro));
 
+	macro->macro = strdup(ctx->code);
+
 	token = read_token(ctx);
-	if(!token || (token->type != TOKEN_TYPE_KEYWORD))
-		return -EINVAL;
-
-	macro->keyword = token->word;
-
-	ret = lre_macro_arg_parse(ctx, macro->args);
-	if(ret) {
+	if(!token || (token->type != TOKEN_TYPE_KEYWORD)) {
+		loge("Macro err: invaild macro name");
 		return -EINVAL;
 	}
 
-	token = read_token(ctx);
-	if(!token || (token->type != TOKEN_TYPE_STRING))
+	macro->keyword = strdup(token->word);
+	logv("macro: %s", macro->keyword);
+
+	macro->argcount = lre_macro_arg_parse(ctx, macro->args);
+	if(macro->argcount < 0) {
+		loge("Macro err: parse macro args error.");
 		return -EINVAL;
+	}
+
+	logd("Macro: macro args count:%d.", macro->argcount);
+	token = read_token(ctx);
+	if(!token || (token->type != TOKEN_TYPE_STRING)) {
+		loge("Macro err: not found macro content.");
+		return -EINVAL;
+	}
 	ptr = token->word;
 	if(ptr[0] == '"') {
 		int l = strlen(ptr);
@@ -89,8 +237,8 @@ static int lre_macro_parse(struct interp_context *ctx)
 		ptr++;
 	}
 
-	macro->content = ptr;
-
+	lre_macro_content2token(macro, ptr);
+	lre_macro_add(macro);
 	return 0;
 }
 
@@ -106,7 +254,7 @@ static int lre_macro_conf_parse(char *mstr)
 
 	ret = interp_lexer_analysis(ctx);
 	if(ret) {
-		loge("Interpreter err: lexer analysis error.");
+		loge("Macro err: lexer analysis error.");
 		interp_context_destroy(ctx);
 		return -EINVAL;
 	}
@@ -114,13 +262,16 @@ static int lre_macro_conf_parse(char *mstr)
 	interp_context_refresh(ctx);
 
 	token = read_token(ctx);
-	if(!token)
+	if(!token) {
+		loge("Macro err: not found effective token.");
 		return -EINVAL;
+	}
 
 	if(!strcmp(token->word, "include")) {
 		char *sub;
 		token = read_token(ctx);
 		if(!token || (token->type != TOKEN_TYPE_STRING)) {
+			loge("Macro err: invaild config include.");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -134,6 +285,10 @@ static int lre_macro_conf_parse(char *mstr)
 		ret = lre_macro_conf_load(sub);
 	} else if(!strcmp(token->word, "define")) {
 		ret = lre_macro_parse(ctx);
+		if(ret) {
+			loge("Macro err: failed to parse macro.");	
+			goto out;
+		}
 	}
 
 out:
@@ -141,6 +296,9 @@ out:
 	return 0;
 }
 
+
+#define _FLAGS_NEWLINE 		(1)
+#define _FLAGS_FOLLOWLINE 	(2)
 static int read_macro_line(char *buf, int maxlen, FILE *confp, int flags)
 {
 
@@ -157,7 +315,7 @@ repeat:
 
         if (buf[len - 1] == '\\') {
 			buf[--len] = '\0';
-			len += read_macro_line(buf + len, maxlen - len, confp, CONF_FLAGS_FOLLOWLINE);
+			len += read_macro_line(buf + len, maxlen - len, confp, _FLAGS_FOLLOWLINE);
 		}
 
         /* Skip any leading whitespace */
@@ -167,7 +325,7 @@ repeat:
         }
         /* ignore comments or empty lines */
         if ((*p == '#' || *p == '\0') && 
-				flags != CONF_FLAGS_FOLLOWLINE)
+				flags != _FLAGS_FOLLOWLINE)
             goto repeat;
 		return len;
     }
@@ -190,7 +348,7 @@ static int lre_macro_conf_load(const char *path)
 	
 	buf = xzalloc(CODE_MAX_LEN * 2);
 
-	while((len = read_macro_line(buf, CODE_MAX_LEN, confp, CONF_FLAGS_NEWLINE)) > 0) {
+	while((len = read_macro_line(buf, CODE_MAX_LEN, confp, _FLAGS_NEWLINE)) > 0) {
 		logd("MACRO: '%s', len:%d", buf, len);
 		lre_macro_conf_parse(buf);
 	}
@@ -200,12 +358,28 @@ static int lre_macro_conf_load(const char *path)
 
 int lre_macro_init(void)
 {
+	int i;
+	int sz;
 	int ret;
+
+	macro_hlist_cap_bits = DEFAULT_MACRO_HLIST_BIT;
+	macro_count = 0;
+	sz = sizeof(struct hlist_head) * (1 << macro_hlist_cap_bits);
+	macro_hlists = xzalloc(sz);
+
+	for (i = 0; i < 1 << macro_hlist_cap_bits; ++i)
+		INIT_HLIST_HEAD(macro_hlists + i);
+
 	ret = lre_macro_conf_load(LR_GLOBAL_MACRO_PATH);
 	if(ret) {
 		loge("Failed to load macro.");
 	}
 
+	lre_macro_dump();
 	return 0;
 }
 
+void lre_macro_release(void)
+{
+
+}

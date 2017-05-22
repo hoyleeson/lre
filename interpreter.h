@@ -8,7 +8,7 @@
 #include "vector.h"
 #include "utils.h"
 #include "log.h"
-#include "lre.h"
+#include "lre_internal.h"
 
 
 #define SYNTAX_CODE_EOF 	(0xffff)
@@ -107,7 +107,6 @@ enum keystub_type {
 struct keyword_stub {
 	int type;
 	char *keyword;
-	char *description;
 	union {
 		lrc_obj_t *(*func_handler)(void);
 		lrc_obj_t *(*call_handler)(void);
@@ -115,6 +114,8 @@ struct keyword_stub {
 		int (*expr_handler)(lrc_obj_t *, int, struct lre_value *);
 		int (*var_handler)(lrc_obj_t *, struct lre_value *);
 	};
+
+	void *data;
 	struct keyword_stub *parent;
 	keystub_vec_t *subvec;
 };
@@ -357,23 +358,23 @@ void interpreter_dump(void);
 
 keystub_vec_t *get_root_keyvec(void);
 
-struct keyword_stub *func_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *func_keyword_install(const char *keyword, void *data,
 		lrc_obj_t *(*handler)(void),
 		struct keyword_stub *parent);
 
-struct keyword_stub *call_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *call_keyword_install(const char *keyword, void *data,
 		lrc_obj_t *(*handler)(void),
 		struct keyword_stub *parent);
 
-struct keyword_stub *arg_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *arg_keyword_install(const char *keyword, void *data,
 		int (*handler)(lrc_obj_t *, struct lre_value *),
 		struct keyword_stub *parent);
 
-struct keyword_stub *expr_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *expr_keyword_install(const char *keyword, void *data,
 		int (*handler)(lrc_obj_t *, int, struct lre_value *),
 		struct keyword_stub *parent);
 
-struct keyword_stub *var_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *var_keyword_install(const char *keyword, void *data,
 		int (*handler)(lrc_obj_t *, struct lre_value *),
 		struct keyword_stub *parent);
 

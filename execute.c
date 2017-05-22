@@ -200,6 +200,7 @@ static int execute_syntax_func(struct syntax_func *func,
 {
 	int ret;
 	struct keyword_stub *funcstub;
+	struct lrc_stub_func *lsfunc;
 	lrc_obj_t *handle;
 
 	funcstub = func->keystub;
@@ -211,6 +212,8 @@ static int execute_syntax_func(struct syntax_func *func,
 		goto out;
 	}
 
+	handle->type = LRC_OBJECT_FUNC;
+	lsfunc = (struct lrc_stub_func *)funcstub->data;
 	exec_ctx_push_handle(ctx, handle);
 
 	if(func->args.count > 0) {
@@ -238,9 +241,8 @@ static int execute_syntax_func(struct syntax_func *func,
 		}
 	}
 
-	/* FIXME: */
-	if(handle->execfunc) {
-		ret = handle->execfunc(handle);
+	if(lsfunc->exec) {
+		ret = lsfunc->exec(handle);
 		if(ret) {
 			loge("Execute err: failed to func '%s' inner func.", funcstub->keyword);
 			ret = -EINVAL;
@@ -262,6 +264,7 @@ static int execute_syntax_call(struct syntax_call *call,
 {
 	int ret;
 	struct keyword_stub *callstub;
+	struct lrc_stub_call *lscall;
 	lrc_obj_t *handle;
 
 	callstub = call->keystub;
@@ -273,6 +276,8 @@ static int execute_syntax_call(struct syntax_call *call,
 		return -EINVAL;
 	}
 
+	handle->type = LRC_OBJECT_CALL;
+	lscall = (struct lrc_stub_call *)callstub->data;
 	exec_ctx_push_handle(ctx, handle);
 
 	if(call->args.count > 0) {
@@ -301,14 +306,13 @@ static int execute_syntax_call(struct syntax_call *call,
 		}
 	}
 
-	if(!handle->execcall) {
+	if(!lscall->exec) {
 		loge("Execute err: lrc call '%s' execfn is NULL.", callstub->keyword);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	/* FIXME: */
-	ret = handle->execcall(handle, arg);
+	ret = lscall->exec(handle, arg);
 	if(ret) {
 		loge("Execute err: failed to call '%s' inner func.", callstub->keyword);
 		ret = -EINVAL;

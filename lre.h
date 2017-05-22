@@ -42,10 +42,12 @@ struct lrc_object {
 	int type;
 #define LRC_OBJECT_FUNC 		(0)
 #define LRC_OBJECT_CALL 		(1)
+	/*
 	union {
 		int (*execfunc)(struct lrc_object *);
 		int (*execcall)(struct lrc_object *, struct lre_value *);
 	};
+	*/
 	struct lre_exec_detail *detail;
 };
 
@@ -67,18 +69,10 @@ struct lre_result {
 /* Failed code the same to errno */
 #define LRE_RET_ERROR 		(0xdeaddead)
 
-int lre_macro_init(void);
-
-int lre_calc_int(int a, int b, int op);
-double lre_calc_dobule(double a, double b, int op);
-
 int lre_compare_int(int a, int b, int op);
 int lre_compare_double(double a, double b, int op);
 int lre_compare_string(char *a, char *b, int op);
 
-
-void lre_exec_detail_init(struct lre_exec_detail *detail, int cap);
-void lre_exec_detail_release(struct lre_exec_detail *detail);
 int lre_push_exec_detail(struct lrc_object *obj, const char *str);
 
 int lre_init(void);
@@ -92,6 +86,12 @@ static inline int vaild_lre_results(int res)
 }
 
 /***********************************************************/
+
+/* Virtual */
+struct lrc_stub_base {
+	char *keyword;
+	char *description;
+};
 
 struct lrc_stub_arg {
 	char *keyword;
@@ -115,6 +115,7 @@ struct lrc_stub_call {
 	char *keyword;
 	char *description;
 	lrc_obj_t *(*handler)(void);
+	int (*exec)(struct lrc_object *, struct lre_value *);
 
 	struct lrc_stub_arg *args;
 	int argcount;
@@ -126,6 +127,7 @@ struct lrc_stub_func {
 	char *keyword;
 	char *description;
 	lrc_obj_t *(*handler)(void);
+	int (*exec)(struct lrc_object *);
 
 	struct lrc_stub_arg *args;
 	int argcount;

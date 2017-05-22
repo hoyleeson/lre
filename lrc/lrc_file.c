@@ -66,7 +66,6 @@ static lrc_obj_t *func_file_handler(void)
 	if(!file) {
 		return (lrc_obj_t *)0;
 	}
-	file->base.execfunc = file_execute;
 
 	return (lrc_obj_t *)file;
 }
@@ -195,6 +194,7 @@ static struct lrc_stub_func lrc_funcs[] = {
 		.keyword 	 = "file",
 		.description = "Check file permissions,owner,is exist or not, etc.",
 		.handler 	 = func_file_handler,
+		.exec  		 = file_execute,
 
 		.args 	   = file_args,
 		.argcount  = ARRAY_SIZE(file_args),

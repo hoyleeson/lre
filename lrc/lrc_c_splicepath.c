@@ -50,7 +50,6 @@ static lrc_obj_t *func_splicepath_handler(void)
 	if(!splicepath) {
 		return (lrc_obj_t *)0;
 	}
-	splicepath->base.execcall = splicepath_execute;
 
 	splicepath->basepath = NULL;
 	splicepath->path = NULL;
@@ -101,6 +100,7 @@ static struct lrc_stub_call lrc_calls[] = {
 		.keyword 	 = "splicepath",
 		.description = "splice path by fragment.",
 		.handler 	 = func_splicepath_handler,
+		.exec 		 = splicepath_execute,
 
 		.args 	   = splicepath_args,
 		.argcount  = ARRAY_SIZE(splicepath_args),

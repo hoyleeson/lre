@@ -92,7 +92,7 @@ static int keyword_stub_add(struct keyword_stub *keystub,
 
 
 static struct keyword_stub *keyword_stub_create(int type, const char *keyword,
-	   	const char *description)
+	   	void *data)
 {
 	struct keyword_stub *keystub;
 
@@ -100,19 +100,19 @@ static struct keyword_stub *keyword_stub_create(int type, const char *keyword,
 
 	keystub->type = type;
 	keystub->keyword = strdup(keyword);
-	keystub->description = strdup(description);
+	keystub->data = data;
 	keystub->subvec = vector_init(0);
 
 	return keystub;
 }
 
-struct keyword_stub *func_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *func_keyword_install(const char *keyword, void *data,
 	   	lrc_obj_t *(*handler)(void),
 		struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_FUNC, keyword, desc);
+	keystub = keyword_stub_create(KEYSTUB_TYPE_FUNC, keyword, data);
 	keystub->func_handler = handler;
 	keystub->parent = parent;
 
@@ -120,13 +120,13 @@ struct keyword_stub *func_keyword_install(const char *keyword, const char *desc,
 	return keystub;
 }
 
-struct keyword_stub *call_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *call_keyword_install(const char *keyword, void *data,
 	   	lrc_obj_t *(*handler)(void),
 		struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_CALL, keyword, desc);
+	keystub = keyword_stub_create(KEYSTUB_TYPE_CALL, keyword, data);
 	keystub->call_handler = handler;
 	keystub->parent = parent;
 
@@ -134,13 +134,13 @@ struct keyword_stub *call_keyword_install(const char *keyword, const char *desc,
 	return keystub;
 }
 
-struct keyword_stub *arg_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *arg_keyword_install(const char *keyword, void *data,
 	   	int (*handler)(lrc_obj_t *, struct lre_value *),
 		struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_ARG, keyword, desc);
+	keystub = keyword_stub_create(KEYSTUB_TYPE_ARG, keyword, data);
 	keystub->arg_handler = handler;
 	keystub->parent = parent;
 
@@ -148,13 +148,13 @@ struct keyword_stub *arg_keyword_install(const char *keyword, const char *desc,
 	return keystub;
 }
 
-struct keyword_stub *expr_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *expr_keyword_install(const char *keyword, void *data,
 	   	int (*handler)(lrc_obj_t *, int, struct lre_value *),
 		struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_EXPR, keyword, desc);
+	keystub = keyword_stub_create(KEYSTUB_TYPE_EXPR, keyword, data);
 	keystub->expr_handler = handler;
 	keystub->parent = parent;
 
@@ -162,13 +162,13 @@ struct keyword_stub *expr_keyword_install(const char *keyword, const char *desc,
 	return keystub;
 }
 
-struct keyword_stub *var_keyword_install(const char *keyword, const char *desc,
+struct keyword_stub *var_keyword_install(const char *keyword, void *data,
 		int (*handler)(lrc_obj_t *, struct lre_value *),
 		struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_VAR, keyword, desc);
+	keystub = keyword_stub_create(KEYSTUB_TYPE_VAR, keyword, data);
 	keystub->var_handler = handler;
 	keystub->parent = parent;
 
@@ -241,10 +241,13 @@ static char *keystub_type_str[] = {
 #define dump_blank(l) do {int i; for(i=0; i<level; i++)printf("    "); }while(0)
 static void keyword_stub_dump(struct keyword_stub *keystub, int level)
 {
+	struct lrc_stub_base *base;
+
 	dump_blank(level);
 	printf("%s [%s]\n", keystub->keyword, keystub_type_str[keystub->type]);
 	dump_blank(level);
-	printf("\t%s\n", keystub->description);
+	base = (struct lrc_stub_base *)keystub->data;
+	printf("\t%s\n", base->description);
 }
 
 static void keystub_vec_dump(keystub_vec_t *vec, int level)
@@ -259,7 +262,7 @@ static void keystub_vec_dump(keystub_vec_t *vec, int level)
 		keyword_stub_dump(keystub, level);
 		keystub_vec_dump(keystub->subvec, level + 1);
 	}
-	if(level%2 != 0)
+	if((level % 2) != 0)
 		printf("\n");
 }
 

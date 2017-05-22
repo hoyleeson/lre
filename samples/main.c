@@ -22,6 +22,7 @@ static char code6[] = "process(procname=\"vi\", procpath=fuzzypath(path=\"/usr/b
 static char code7[] = "process(procname=\"vi\", procpath=fuzzypath(path=\"/usr/bin/*\")){running==1} && file(path=splicepath(basepath=processdir(procname=\"vi\", procpath=fuzzypath(path=\"/usr/*/*\")), path=\"../../etc/vim/vimrc\")){exist==1 && owner==root && permission==644}";
 
 static char *code[] = {
+#if 0
 	code1,
 	code2,
 	code3,
@@ -29,6 +30,7 @@ static char *code[] = {
 	code5,
 	code6,
 	code7,
+#endif
 };
 
 int main(int argc, char **argv)
