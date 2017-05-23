@@ -1,2 +1,0 @@
-
-define yara_scan_process_conf(_procname, _procpath, _yararule, _confpath)  "process(procname=$_procname, procpath=fuzzypath(path=$_procpath)) {running==1} && yarascan(rule=$_yararule, target=fuzzypath(basepath=processdir(procname=$_procname, procpath=fuzzypath(path=$_procpath)), path=$_confpath)) {matched == 1}"

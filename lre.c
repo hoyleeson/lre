@@ -274,6 +274,7 @@ int lre_init(void)
 	int ret;
 	log_init(LOG_MODE_CALLBACK, LOG_VERBOSE);
 
+	lre_conf_init();
 	ret = interpreter_init();
 	if(ret) {
 		loge("Interpreter initialize failed.");
@@ -282,14 +283,36 @@ int lre_init(void)
 
 	lrc_builtin_init();
 	lre_macro_init();
-
 	//interpreter_dump();
 	return 0;
 }
 
-int lre_execute(const char *code, struct lre_result *res)
+int lre_initX(const char *path, void (*logcb)(int, const char *))
 {
-	return interpreter_execute(code, res);
+	log_set_callback(logcb);
+	lre_set_conf_path(path);
+	return lre_init();
+}
+
+struct lre_result *lre_execute(const char *code)
+{
+	int ret;
+	struct lre_result *res;	
+
+	res = xzalloc(sizeof(*res));
+	ret = interpreter_execute(code, res);
+	if(ret) {
+		loge("Error: Failed to interpret code:\n\t%s.", code);	
+	}
+	
+	return res;
+}
+
+void lre_result_destroy(struct lre_result *res)
+{
+	if(res->details)
+		free(res->details);
+	free(res);
 }
 
 void lre_release(void)
@@ -297,6 +320,7 @@ void lre_release(void)
 	lrc_builtin_release();
 
 	lre_macro_release();
+	lre_conf_release();
 	log_release();
 }
 

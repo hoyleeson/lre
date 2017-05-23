@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <unistd.h>
+#include <dirent.h>
 
 #include "interpreter.h"
 
@@ -390,13 +392,16 @@ repeat:
 	return 0;
 }
 
-static int lre_macro_conf_load(const char *path)
+static int lre_macro_conf_load(const char *fpath)
 {
     FILE *confp;
     char *buf;
 	int len;
+	char path[PATH_MAX] = { 0 };
 
-	logd("load lre macro config.");
+	snprintf(path, PATH_MAX, "%s/%s", lre_get_conf_path(), fpath);
+	logd("load lre macro config: %s.", path);
+
     confp = fopen(path, "r");
     if (!confp) {
         loge("Cannot open file %s", path);

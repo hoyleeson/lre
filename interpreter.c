@@ -331,6 +331,7 @@ void interpreter_dump(void)
 int interpreter_execute(const char *code, struct lre_result *res)
 {
 	int ret;
+	char *errstr;
 	struct interp_context *ctx;
 
 	ctx = interp_context_create(code);
@@ -338,9 +339,8 @@ int interpreter_execute(const char *code, struct lre_result *res)
 repeat:
 	ret = interp_lexer_analysis(ctx);
 	if(ret) {
-		loge("Interpreter err: lexer analysis error.");
-		interp_context_destroy(ctx);
-		return -EINVAL;
+		errstr = "Interpreter err: lexer analysis error.";
+		goto err;
 	}
 
 	interp_context_refresh(ctx);
@@ -350,31 +350,28 @@ repeat:
 	if(ret == PREPROCESS_RES_REPEAT)
 		goto repeat;
 	else if(ret < 0) {
-		loge("Interpreter err: preprocess error.");
-		return -EINVAL;
+		errstr = "Interpreter err: preprocess error.";
+		goto err;
 	}
 
 	ret = interp_syntax_parse(ctx);
 	if(ret) {
-		loge("Interpreter err: syntax parse error.");
-		interp_context_destroy(ctx);
-		return -EINVAL;
+		errstr = "Interpreter err: syntax parse error.";
+		goto err;
 	}
 
 	interp_context_refresh(ctx);
 	/*	dump_syntax_tree(ctx->root); */
 	ret = interp_semantic_analysis(ctx);
 	if(ret) {
-		loge("Interpreter err: semantic analysis error.");
-		interp_context_destroy(ctx);
-		return -EINVAL;
+		errstr = "Interpreter err: semantic analysis error.";
+		goto err;
 	}
 
 	ret = interp_execute(ctx);
 	if(ret) {
-		loge("Interpreter err: exec error.");
-		interp_context_destroy(ctx);
-		return -EINVAL;
+		errstr = "Interpreter err: exec error.";
+		goto err;
 	}
 
 	res->result = interp_get_exec_results(ctx);
@@ -384,6 +381,13 @@ repeat:
 	
 	interp_context_destroy(ctx);
 	return 0;
+
+err:
+	res->result = LRE_RESULT_UNKNOWN;
+	res->errcode = ret;
+	res->details = strdup(errstr);
+	interp_context_destroy(ctx);
+	return ret;
 }
 
 int interpreter_init(void)

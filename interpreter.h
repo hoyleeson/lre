@@ -7,6 +7,7 @@
 #include "list.h"
 #include "vector.h"
 #include "utils.h"
+#include "conf.h"
 #include "log.h"
 #include "lre_internal.h"
 

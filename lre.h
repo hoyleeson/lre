@@ -75,10 +75,13 @@ int lre_compare_string(char *a, char *b, int op);
 
 int lre_push_exec_detail(struct lrc_object *obj, const char *str);
 
+int lre_initX(const char *path, void (*logcb)(int, const char *));
 int lre_init(void);
-int lre_execute(const char *code, _out struct lre_result *res);
+
+struct lre_result *lre_execute(const char *code);
+void lre_result_destroy(struct lre_result *res);
+
 void lre_release(void);
-int lre_get_results(void);
 
 static inline int vaild_lre_results(int res)
 {

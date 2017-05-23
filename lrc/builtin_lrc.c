@@ -28,7 +28,7 @@ int lrc_builtin_init(void)
 	CHECK_ERR(ret, "splicepath");
 
 
-	loge("Logic rule component initialize success");
+	logi("Logic rule component initialize success");
 	return 0;
 err:
 	return -EINVAL;

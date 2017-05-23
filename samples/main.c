@@ -39,22 +39,22 @@ static char *code[] = {
 int main(int argc, char **argv)
 {
 	int i;
-	int ret;
-	struct lre_result result;
+	struct lre_result *result;
 	lre_init();
 
 	for(i=0; i<ARRAY_SIZE(code); i++) {
-		ret = lre_execute(code[i], &result);
-		if(ret) {
-			printf("lre execute err\n");
+		result = lre_execute(code[i]);
+		if(!result) {
+			printf("not result.");
 			continue;
 		}
 
-		if(vaild_lre_results(result.result))
-			printf("exec result:%d, detail:%s\n", result.result, result.details);
+		if(vaild_lre_results(result->result))
+			printf("exec result:%d, detail:%s\n", result->result, result->details);
 		else
-			printf("exec error, errcode:%d, detail:%s\n", result.errcode, result.details);
+			printf("exec error, errcode:%d, detail:%s\n", result->errcode, result->details);
 		printf("\n");
+		lre_result_destroy(result);
 	}
 
 	lre_release();
