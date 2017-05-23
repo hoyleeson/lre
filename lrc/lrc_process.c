@@ -12,7 +12,10 @@
 #include <pwd.h>
 
 #include "../utils.h"
+#include "../log.h"
 #include "../lre.h"
+
+#define MULTIPATH_SPLIT_CH 	';'
 
 #define PATH_ARR_MAX  	(PATH_MAX * 10)
 
@@ -239,7 +242,7 @@ static void fill_spec_process(struct lrc_process *process)
 			r = !strncmp(process->procpath, psinfo->binpath, strlen(psinfo->binpath));
 
 			ptr = process->procpath;
-			while((ptr = strchr(ptr, ':')) != NULL) {
+			while((ptr = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
 				ptr++;
 				r |= !strncmp(ptr, psinfo->binpath, strlen(psinfo->binpath));
 			}
@@ -247,7 +250,7 @@ static void fill_spec_process(struct lrc_process *process)
 		}
 		if(ret) {
 			process->psinfo[process->count++] = psinfo;
-			printf("exec process func, process:%s, binpath:%s\n", 
+			logd("Get the process:%s, binpath:%s", 
 					psinfo->name, psinfo->binpath ? psinfo->binpath : "(unknown)");
 		}
 
@@ -264,6 +267,7 @@ static int process_execute(lrc_obj_t *handle)
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
+		loge("Failed execute 'process' func. Not specified process name or path.\n");
 		return -EINVAL;
 	}
 
@@ -292,11 +296,13 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process = (struct lrc_process *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
+	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
+		printf("lrc 'process' err: procname must be string\n");
 		return LRE_RET_ERROR;
+	}
 
 	process->procname = strdup(lreval->valstring);
-	printf("process name:%s\n", process->procname);
+	printf("lrc 'process' arg: procname: %s\n", process->procname);
 	return LRE_RET_OK;
 }
 
@@ -306,11 +312,13 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process = (struct lrc_process *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
+	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
+		printf("lrc 'process' err: procpath must be string\n");
 		return LRE_RET_ERROR;
+	}
 
 	process->procpath = strdup(lreval->valstring);
-	printf("process directory:%s\n", process->procpath);
+	printf("lrc 'process' arg: procpath: %s\n", process->procpath);
 	return LRE_RET_OK;
 }
 
@@ -323,8 +331,10 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	if(process->state != STATE_EXEC_SUCCESS)
 		return LRE_RET_ERROR;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
+	if(!lreval || lreval->type != LRE_ARG_TYPE_INT) {
+		printf("lrc 'process': running expr err, val must be '1' or '0'\n");
 		return LRE_RET_ERROR;
+	}
 
 	/*FIXME: verify val first */
 	return lre_compare_int(!!process->count, lreval->valint, opt);
@@ -343,8 +353,10 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 		return LRE_RET_ERROR;
 
 	if(!lreval || (lreval->type != LRE_ARG_TYPE_INT &&
-		   	lreval->type != LRE_ARG_TYPE_STRING))
+		   	lreval->type != LRE_ARG_TYPE_STRING)) {
+		printf("lrc 'process' err: procpath must be string or int\n");
 		return LRE_RET_ERROR;
+	}
 
 	if(lreval->type == LRE_ARG_TYPE_INT) {
 		sprintf(user, "%d", lreval->valint);
@@ -384,6 +396,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
+		loge("Failed execute 'processdir' call. Not specified process name or path.\n");
 		return -EINVAL;
 	}
 
@@ -408,13 +421,13 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 			r = !strncmp(process->procpath, psinfo->binpath, strlen(psinfo->binpath));
 
 			ptr = process->procpath;
-			while((ptr = strchr(ptr, ':')) != NULL) {
+			while((ptr = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
 				ptr++;
 				r |= !strncmp(ptr, psinfo->binpath, strlen(psinfo->binpath));
 			}
 			ret &= r;
 		}
-		printf("ret:%d, pspath:%s\n", ret, psinfo->binpath ? psinfo->binpath : "(unknown)");
+
 		if(ret && psinfo->binpath) {
 			int repeat = 0;
 			/* filter repeat path */
@@ -424,7 +437,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 			}
 			if(!repeat) {
 				patharr[count++] = psinfo->binpath;
-				printf("Exec processdir call, process:%s, binpath:%s\n", 
+				logd("'processdir' call matched process:%s, binpath:%s\n", 
 					psinfo->name, psinfo->binpath);
 			}
 		}
@@ -433,7 +446,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	}
 
 	if(count == 0) {
-		printf("Exec processdir call, not found in line with process.\n");
+		logw("Exec processdir call, not found in line with process.\n");
 		return 0;
 	}
 
@@ -441,14 +454,15 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 
 	for(i=0; i< count; i++) {
 		char dir[PATH_MAX] = {0};
-		len += snprintf(outpath + len, PATH_ARR_MAX - len, "%s:", 
-				path2dir(patharr[i], dir));
+		len += snprintf(outpath + len, PATH_ARR_MAX - len, "%s%c", 
+				path2dir(patharr[i], dir), MULTIPATH_SPLIT_CH);
 	}
 	outpath[len - 1] = '\0';
 	
 	val->valstring = outpath;
 	val->type = LRE_ARG_TYPE_STRING;
 
+	logw("Exec processdir call, result dir:%s.\n", outpath);
 	process->state = STATE_EXEC_SUCCESS;
 	return 0;
 }
@@ -469,7 +483,7 @@ static lrc_obj_t *func_processdir_handler(void)
 static struct lrc_stub_arg process_args[] = {
 	{
 		.keyword  	 = "procname",
-		.description = "Type: string. Specify process name. example: procname=\"redis\"",
+		.description = "Type: string. Specify process name. example: procname=\"bash\"",
 		.handler 	 = arg_procname_handler,
 	}, {
 		.keyword  	 = "procpath",
@@ -481,7 +495,7 @@ static struct lrc_stub_arg process_args[] = {
 static struct lrc_stub_expr process_exprs[] = {
 	{
 		.keyword  	 = "running",
-		.description = "Check process running or not. val: 1 or 0, 1: running, 0: not running, example: running==1",
+		.description = "Check process running or not. val: '1' or '0', 1: running, 0: not running, example: running==1",
 		.handler 	 = expr_running_handler,
 	}, {
 		.keyword  	 = "user",
@@ -539,3 +553,4 @@ void lrc_process_release(void)
 {
 	lrc_module_unregister(&lrc_process_mod);
 }
+

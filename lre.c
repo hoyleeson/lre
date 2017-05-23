@@ -79,7 +79,7 @@ static int lrc_call_register(struct keyword_stub *parent, struct lrc_stub_call *
 	struct keyword_stub *kstub;
 
 	if(!call->exec) {
-		loge("Lrc call->exec callback mast be defined");	
+		loge("Lrc call->exec callback must be defined");	
 		return -EINVAL;
 	}
 	kstub = call_keyword_install(call->keyword, call, call->handler, parent);
@@ -227,7 +227,7 @@ int lrc_module_register(struct lrc_module *module)
 	int ret;
 
 	if(!module) {
-		loge("lrc module mast be not NULL.");
+		loge("lrc module must be not NULL.");
 		return -EINVAL;
 	}
 
