@@ -195,7 +195,7 @@ static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ct
 		loge("Execute err: failed to call '%s' expr handler.", estub->keyword);
 		return RET_DEAD_VAL;
 	}
-	logi("Execute expr '%s' result: %d.", estub->keyword, ret);
+	logd("Execute expr '%s' result: %d.", estub->keyword, ret);
 
 	return ret;
 }
@@ -211,7 +211,7 @@ static int execute_syntax_func(struct syntax_func *func,
 	fstub = func->keystub;
 	stubfunc = (struct lrc_stub_func *)fstub->data;
 
-	logd("Execute func '%s'.", fstub->keyword);
+	logv("Execute func '%s'.", fstub->keyword);
 	handle = stubfunc->constructor();
 	if(!handle) {
 		loge("Execute err: failed to call '%s' func constructor.", fstub->keyword);
@@ -266,6 +266,7 @@ out:
 		stubfunc->destructor(handle);
 
 	exec_ctx_pop_handle(ctx);
+	logd("Execute func '%s' result:%d.", fstub->keyword, ret);
 	return ret;
 }
 
@@ -279,7 +280,7 @@ static int execute_syntax_call(struct syntax_call *call,
 
 	cstub = call->keystub;
 
-	logd("Execute call '%s'.", cstub->keyword);
+	logv("Execute call '%s'.", cstub->keyword);
 	stubcall = (struct lrc_stub_call *)cstub->data;
 	handle = stubcall->constructor();
 	if(!handle) {
@@ -337,6 +338,7 @@ out:
 		stubcall->destructor(handle);
 
 	exec_ctx_pop_handle(ctx);
+	logd("Execute call '%s' result:%d.", cstub->keyword, ret);
 	return ret;
 }
 

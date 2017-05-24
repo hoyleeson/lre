@@ -73,7 +73,7 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	splicepath = (struct lrc_splicepath *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'splicepath' err: basepath must be string\n");
+		loge("lrc 'splicepath' err: basepath must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -93,7 +93,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	splicepath = (struct lrc_splicepath *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'splicepath' err: path must be string\n");
+		loge("lrc 'splicepath' err: path must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -102,7 +102,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	splicepath->path = strdup(str);
 	assert_ptr(splicepath->path);
-	logd("splicepath arg handler: path:%s", splicepath->path);
+	logd("lrc 'splicepath' arg handler: path:%s", splicepath->path);
 	return LRE_RET_OK;
 }
 
@@ -121,7 +121,7 @@ static struct lrc_stub_arg splicepath_args[] = {
 static struct lrc_stub_call lrc_calls[] = {
 	{
 		.keyword 	 = "splicepath",
-		.description = "splice path by fragment.",
+		.description = "splice path by path fragment.",
 		.constructor = splicepath_constructor,
 		.exec 		 = splicepath_execute,
 		.destructor  = splicepath_destructor,

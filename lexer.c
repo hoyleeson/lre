@@ -247,6 +247,7 @@ static int lexer_token_expands(struct interp_context *ctx)
 	ctx->tokens = realloc(ctx->tokens, sizeof(struct lex_token) * ctx->tokencap);
 	if(!ctx->tokens)
 		return -EINVAL;
+	logi("Lexer: expands lex token stack.");
 	return 0;
 }
 

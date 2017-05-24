@@ -29,7 +29,7 @@ char code7[] = "process(procname=\"vi\", procpath=fuzzypath(path=\"/usr/bin/*\")
 char code8[] = "file_exist(\"/usr/bin/apt\")";
 
 static char *code[] = {
-#if 0
+#if 1
 	code1,
 	code2,
 	code3,

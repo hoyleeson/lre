@@ -272,7 +272,7 @@ static int process_execute(lrc_obj_t *handle)
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
-		loge("Failed execute 'process' func. Not specified process name or path.\n");
+		loge("Failed execute 'process' func. Not specified process name or path.");
 		return -EINVAL;
 	}
 
@@ -318,7 +318,7 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process = (struct lrc_process *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'process' err: procname must be string\n");
+		loge("lrc 'process' err: procname must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -327,7 +327,7 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process->procname = strdup(str);
 	assert_ptr(process->procname);
-	printf("lrc 'process' arg: procname: %s\n", process->procname);
+	logd("lrc 'process' arg: procname: %s", process->procname);
 	return LRE_RET_OK;
 }
 
@@ -338,7 +338,7 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process = (struct lrc_process *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'process' err: procpath must be string\n");
+		loge("lrc 'process' err: procpath must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -347,7 +347,7 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	process->procpath = strdup(str);
 	assert_ptr(process->procpath);
-	printf("lrc 'process' arg: procpath: %s\n", process->procpath);
+	logd("lrc 'process' arg: procpath: %s", process->procpath);
 	return LRE_RET_OK;
 }
 
@@ -361,7 +361,7 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 		return LRE_RET_ERROR;
 
 	if(!lreval || !lre_value_is_int(lreval)) {
-		printf("lrc 'process': running expr err, val must be '1' or '0'\n");
+		loge("lrc 'process': running expr err, val must be '1' or '0'");
 		return LRE_RET_ERROR;
 	}
 
@@ -383,7 +383,7 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 
 	if(!lreval || (!lre_value_is_int(lreval) &&
 				!lre_value_is_string(lreval))) {
-		printf("lrc 'process' err: procpath must be string or int\n");
+		loge("lrc 'process' err: procpath must be string or int");
 		return LRE_RET_ERROR;
 	}
 
@@ -426,7 +426,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
 		process->state = STATE_EXEC_FAILED;
-		loge("Failed execute 'processdir' call. Not specified process name or path.\n");
+		loge("Failed execute 'processdir' call. Not specified process name or path.");
 		return -EINVAL;
 	}
 
@@ -467,7 +467,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 			}
 			if(!repeat) {
 				patharr[count++] = psinfo->binpath;
-				logd("'processdir' call matched process:%s, binpath:%s\n", 
+				logd("'processdir' call matched process:%s, binpath:%s", 
 					psinfo->name, psinfo->binpath);
 			}
 		}
@@ -476,7 +476,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	}
 
 	if(count == 0) {
-		logw("Exec processdir call, not found in line with process.\n");
+		logw("Exec processdir call, not found in line with process.");
 		return 0;
 	}
 
@@ -489,7 +489,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	}
 	outpath[len - 1] = '\0';
 	
-	logi("Exec processdir call, result dir:%s.\n", outpath);
+	logi("Exec processdir call, result dir:%s.", outpath);
 
 	lre_value_dup2_string(val, outpath);
 	free(outpath);
@@ -589,7 +589,7 @@ int lrc_process_init(void)
 
 	ret = lrc_module_register(&lrc_process_mod);
 	if(ret)
-		printf("Failed to register '%s' modules \n", lrc_process_mod.name);
+		loge("Failed to register '%s' modules", lrc_process_mod.name);
 	return ret;
 }
 

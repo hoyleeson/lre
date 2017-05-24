@@ -303,6 +303,7 @@ int lrc_module_register(struct lrc_module *module)
 	}
 
 	lre_module_create(module);
+	logi("Register lrc module '%s' success.", module->name);
 	return 0;
 err:
 	loge("Failed to register lrc module '%s'.", module->name);

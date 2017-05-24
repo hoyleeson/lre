@@ -88,7 +88,7 @@ static int preprocess_content(struct interp_context *ctx)
 		return -EINVAL;
 	}
 	code = lre_create_code_by_macro(macro, argc, (const char **)args);
-	logd("Preprocess create code:%s\n", code);
+	logd("Preprocess create code:%s", code);
 
 	/* replace old code */
 	interp_context_reload_code(ctx, code);

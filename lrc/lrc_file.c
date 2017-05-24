@@ -88,7 +88,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	file = (struct lrc_file *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'file' err: path must be string\n");
+		loge("lrc 'file' err: path must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -97,7 +97,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	file->path = strdup(str);
 	assert_ptr(file->path);
-	printf("path:%s\n", file->path);
+	logd("lrc 'file': arg handler. path:%s", file->path);
 	return LRE_RET_OK;
 }
 
@@ -111,7 +111,7 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 		return LRE_RET_ERROR;
 
 	if(!lreval || !lre_value_is_int(lreval)) {
-		printf("lrc 'file' err: exist expr acceptable val: 1 or 0\n");
+		loge("lrc 'file' err: exist expr acceptable val: 1 or 0");
 		return LRE_RET_ERROR;
 	}
 
@@ -138,7 +138,7 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 
 	if(!lreval || (!lre_value_is_int(lreval) &&
 				!lre_value_is_string(lreval))) {
-		printf("lrc 'file' err: unexpect owner val type.\n");
+		loge("lrc 'file' err: unexpect owner val type.");
 		return LRE_RET_ERROR;
 	}
 
@@ -184,7 +184,7 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 		return LRE_RET_ERROR;
 
 	if(!lreval || !lre_value_is_int(lreval)) {
-		printf("lrc 'file' err: exist expr acceptable val: 1 or 0\n");
+		loge("lrc 'file' err: exist expr acceptable val: 1 or 0");
 		return LRE_RET_ERROR;
 	}
 
@@ -211,7 +211,7 @@ static struct lrc_stub_expr file_exprs[] = {
 		.handler 	 = expr_owner_handler,
 	}, {
 		.keyword  	 = "permission",
-		.description = "File visit permission. example: permission==0x0755, permission=0x644",
+		.description = "File visit permission. example: permission==755, permission=644",
 		.handler 	 = expr_permission_handler,
 	}
 };
@@ -243,7 +243,7 @@ int lrc_file_init(void)
 
 	ret = lrc_module_register(&lrc_file_mod);
 	if(ret)
-		printf("Failed to register '%s' modules \n", lrc_file_mod.name);
+		loge("Failed to register '%s' modules", lrc_file_mod.name);
 	return ret;
 }
 

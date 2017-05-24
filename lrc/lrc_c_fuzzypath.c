@@ -64,13 +64,11 @@ static int recurse_dir(char *path, int depth,
 	int pathlen = strlen(path);
 	char *ptr;
 	char *subpath = xzalloc(sizeof(char)*PATH_MAX);
-	if(!subpath)
-		return -ENOMEM;
 
-	//logv("recurse dir:%s", path);
 	dir = opendir(path);
 	if (dir == NULL) {
 		// not a directory, carry on
+		logi("lrc 'fuzzypath': not a directory: %s", path);
 		return -EINVAL;
 	}
 
@@ -82,7 +80,7 @@ static int recurse_dir(char *path, int depth,
 
 		memset(subpath, 0, PATH_MAX);
 		if (strlen(dp->d_name) + pathlen + 2/*NUL and slash*/ > PATH_MAX) {
-			logi("Invalid path specified: too long");
+			loge("lrc 'fuzzypath': Invalid path specified: too long");
 			continue;
 		}
 		/*FIXME: check soft link */
@@ -92,7 +90,7 @@ static int recurse_dir(char *path, int depth,
 		strcat(subpath, dp->d_name);
 
 		if(lstat(subpath, &st) < 0) {
-			logd("lstat %s error", subpath);
+			logd("lrc 'fuzzypath': lstat %s error", subpath);
 		   	continue;
 		}
 
@@ -158,7 +156,7 @@ static int fuzzy2path(char *path, char *outpath)
 	if(path[0] == '/')
 		len = sprintf(buf, "/");
 
-	logv("Fuzzypath '%s' to path start.", path);
+	logv("Fuzzypath '%s' find to path.", path);
 	/* Step 1. split */
 	while((token = strsep(&path, "/")) != NULL) {
 		char *p, *ptr;
@@ -180,7 +178,8 @@ static int fuzzy2path(char *path, char *outpath)
 			if(p != ptr) {
 				fdir[cnt].frag.str[j] = ptr;
 				if(++j >= FUZZY_POINT_MAX) {
-					loge("Failed. The fuzzy point does not exceed %d.", FUZZY_POINT_MAX);
+					loge("lrc 'fuzzypath' Failed. The fuzzy point max: %d.",
+						   	FUZZY_POINT_MAX);
 					return -EINVAL;
 				}
 			}
@@ -200,7 +199,8 @@ static int fuzzy2path(char *path, char *outpath)
 		}
 
 		if(++cnt >= DIR_DEPTH_MAX) {
-			loge("Failed. The fuzzy directory exceeds %d.", DIR_DEPTH_MAX);
+			loge("lrc 'fuzzypath' Failed. The fuzzy directory depth max: %d.",
+					DIR_DEPTH_MAX);
 			return -EINVAL;
 		}
 	}
@@ -222,13 +222,14 @@ static int fuzzy2path(char *path, char *outpath)
 	if(i == cnt) {
 		strncat(outpath, buf, PATH_ARR_MAX);
 		len = strlen(outpath);
-		logw("Warning:%s is not fuzzy path.", buf);
+		logw("lrc 'fuzzypath' Warning:'%s' is not fuzzy path.", buf);
 		return 0;
 	}
 
 	recurse_dir(buf, i, &fdir[i], cnt, outpath);
 	len = strlen(outpath);
 	if(len == 0) {
+		loge("lrc 'fuzzypath': fuzzypath to path parse failed.");
 		return -EINVAL;	
 	}
 
@@ -249,7 +250,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 	fuzzypath = (struct lrc_fuzzypath *)handle;
 
 	if(!fuzzypath->path) {
-		logd("lrc 'fuzzypath': invaild path");
+		loge("lrc 'fuzzypath': invaild path");
 		return -EINVAL;
 	}
 #if 1
@@ -280,7 +281,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 			len += snprintf(path + len, PATH_MAX - len, "%s", fuzzypath->path);
 			path[len] = '\0';
 
-			logd("lrc 'fuzzypath': fuzzypath:%s", path);
+			logv("lrc 'fuzzypath': fuzzypath:%s", path);
 
 			ret = fuzzy2path(path, tmppath);
 			if(ret) {
@@ -296,7 +297,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		len = snprintf(path, PATH_MAX, "%s", fuzzypath->path);
 		path[len] = '\0';
 
-		logd("lrc 'fuzzypath': fuzzypath:%s", path);
+		logv("lrc 'fuzzypath': fuzzypath:%s", path);
 
 		fuzzy2path(path, outpath);
 	}
@@ -319,7 +320,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 	fuzzy2path(path, outpath);
 #endif
 
-	logd("lrc 'fuzzypath' realpath:%s", outpath);
+	logv("lrc 'fuzzypath' realpath:%s", outpath);
 	lre_value_dup2_string(val, outpath);
 	free(outpath);
 	return LRE_RET_OK;
@@ -360,7 +361,7 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'fuzzypath' err: basepath must be string\n");
+		loge("lrc 'fuzzypath' err: basepath must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -381,7 +382,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'fuzzypath' err: basepath must be string\n");
+		printf("lrc 'fuzzypath' err: basepath must be string");
 		return LRE_RET_ERROR;
 	}
 

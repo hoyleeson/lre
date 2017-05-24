@@ -544,7 +544,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 	CHECK_KEYWORD_GOTO(key, err);
 	expr->key = strdup(key);
 	assert_ptr(expr->key);
-	logd("Syntax: parse expr '%s'", expr->key);
+	logv("Syntax: parse expr '%s'", expr->key);
 
 	opt = read_operator(ctx);
 	if(get_symbol_type(opt) != SYM_TYPE_OPT_COMP) {
@@ -562,6 +562,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 
 	*ppexpr = expr;
 
+	logd("Syntax: parse expr '%s' success", expr->key);
 	return 0;
 err:
 	free(expr);
@@ -765,7 +766,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 	call->keyword = strdup(keyword);
 	assert_ptr(call->keyword);
 
-	logd("Syntax: parse call '%s'", call->keyword);
+	logv("Syntax: parse call '%s'", call->keyword);
 	bracket = read_bracket(ctx);
 	if(bracket == SYNTAX_SYM_START_PARENTHESIS) {
 		token = peek_next_token(ctx);
@@ -786,6 +787,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 		goto err;
 	}
 	*ppcall = call;
+	logd("Syntax: parse call '%s' success", call->keyword);
 	return 0;
 
 err:
@@ -807,7 +809,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 	CHECK_KEYWORD_GOTO(keyword, err);
 	func->keyword = strdup(keyword);
 	assert_ptr(func->keyword);
-	logd("Syntax: parse func '%s'", func->keyword);
+	logv("Syntax: parse func '%s'", func->keyword);
 
 	bracket = read_bracket(ctx);
 	if(bracket == SYNTAX_SYM_START_PARENTHESIS) {
@@ -849,6 +851,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 		goto err;
 	}
 	*ppfunc = func;
+	logd("Syntax: parse func '%s' success", func->keyword);
 	return 0;
 
 err:

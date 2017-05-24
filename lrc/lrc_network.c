@@ -57,7 +57,7 @@ static int tcp_state_load(void)
 
 	tcp_stats = xzalloc(sizeof(struct net_state) * entries);
 
-	logd("TCP state: ");
+	logv("TCP state: ");
 	fseek(fp, 0, SEEK_SET);
 	while(xgetline(buf, 511, fp)) {
 		int len = strlen(buf);
@@ -86,7 +86,7 @@ static int tcp_state_load(void)
 		tcp_stats[cnt].remoteport = rem_port;
 		tcp_stats[cnt].state = state;
 
-		logd("local ip:%08x, port:%d, remote ip:%08x, port:%d, state:%d\n",
+		logv("local ip:%08x, port:%d, remote ip:%08x, port:%d, state:%d",
 				tcp_stats[cnt].localaddr, tcp_stats[cnt].localport,
 				tcp_stats[cnt].remoteaddr, tcp_stats[cnt].remoteport,
 				tcp_stats[cnt].state);
@@ -122,7 +122,7 @@ static int udp_state_load(void)
 
 	udp_stats = xzalloc(sizeof(struct net_state) * entries);
 
-	logd("UDP state: ");
+	logv("UDP state: ");
 	fseek(fp, 0, SEEK_SET);
 	while(xgetline(buf, 511, fp)) {
 		int len = strlen(buf);
@@ -151,7 +151,7 @@ static int udp_state_load(void)
 		udp_stats[cnt].remoteport = rem_port;
 		udp_stats[cnt].state = state;
 
-		logd("local ip:%08x, port:%d, remote ip:%08x, port:%d, state:%d\n",
+		logv("local ip:%08x, port:%d, remote ip:%08x, port:%d, state:%d",
 				udp_stats[cnt].localaddr, udp_stats[cnt].localport,
 				udp_stats[cnt].remoteaddr, udp_stats[cnt].remoteport,
 				udp_stats[cnt].state);
@@ -217,7 +217,7 @@ static int arg_protocol_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	network = (struct lrc_network *)handle;
 	if(!lreval || !lre_value_is_string(lreval)) {
-		printf("lrc 'process' err: procname must be string\n");
+		loge("lrc 'network' err: protocol must be string");
 		return LRE_RET_ERROR;
 	}
 	str = lre_value_get_string(lreval);
@@ -225,7 +225,7 @@ static int arg_protocol_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	strncpy(network->protocol, str, 16);
-	printf("network arg: protocol:%s\n", network->protocol);
+	logd("lrc 'network' arg: protocol:%s", network->protocol);
 
 	return LRE_RET_OK;
 }
@@ -238,12 +238,12 @@ static int arg_port_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	network = (struct lrc_network *)handle;
 
 	if(!lreval || !lre_value_is_int(lreval)) {
-		printf("lrc 'network': port arg err, range: 0~65535\n");
+		loge("lrc 'network': port arg err, range: 0~65535");
 		return LRE_RET_ERROR;
 	}
 
 	network->port = lre_value_get_int(lreval);
-	printf("network arg: port:%d\n", network->port);
+	logd("lrc 'network' arg: port:%d", network->port);
 	return LRE_RESULT_TRUE;
 }
 
@@ -260,7 +260,7 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 	network = (struct lrc_network *)handle;
 
 	if(!lreval || !lre_value_is_int(lreval)) {
-		printf("lrc 'network': listen expr err, val must be '1' or '0'\n");
+		loge("lrc 'network': listen expr err, val must be '1' or '0'");
 		return LRE_RET_ERROR;
 	}
 
@@ -343,7 +343,7 @@ int lrc_network_init(void)
 
 	ret = lrc_module_register(&lrc_network_mod);
 	if(ret)
-		printf("Failed to register '%s' modules \n", lrc_network_mod.name);
+		loge("Failed to register '%s' modules", lrc_network_mod.name);
 	return ret;
 }
 

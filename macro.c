@@ -161,6 +161,7 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 	struct lre_macro_token token[2 * LRE_MACRO_ARGC_MAX + 1];
 
 	ptr = content;
+	logv("Macro: content '%s' to token.", content);
 
 	token[cnt].type = MACRO_TOKEN_TYPE_WORD;
 	token[cnt].wordptr = ptr;
@@ -196,6 +197,7 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 			macro->token[i].argindex = token[i].argindex;
 	}
 	macro->tokencnt = cnt;
+	logv("Macro: token count:%d.", cnt);
 
 	return 0;
 }
@@ -405,7 +407,7 @@ static int lre_macro_conf_load(const char *fpath)
 	char path[PATH_MAX] = { 0 };
 
 	snprintf(path, PATH_MAX, "%s/%s", lre_get_conf_path(), fpath);
-	logd("load lre macro config: %s.", path);
+	logv("load lre macro config: %s.", path);
 
     confp = fopen(path, "r");
     if (!confp) {
@@ -420,6 +422,7 @@ static int lre_macro_conf_load(const char *fpath)
 		lre_macro_conf_parse(buf);
 	}
 
+	logi("load lre macro config: %s success.", path);
 	free(buf);
 	return 0;
 }
@@ -476,3 +479,4 @@ void lre_macro_release(void)
 		}
 	}
 }
+
