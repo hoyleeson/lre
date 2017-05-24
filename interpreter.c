@@ -398,5 +398,12 @@ int interpreter_init(void)
 
 void interpreter_release(void)
 {
+	int i;
+	struct keyword_stub *keystub;
 
+	vector_foreach_active_slot(root_kstub_vec, keystub, i) {
+		if(!keystub)
+			continue;
+		free(keystub);
+	}
 }

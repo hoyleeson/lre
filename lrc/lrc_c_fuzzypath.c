@@ -28,6 +28,9 @@ struct lrc_fuzzypath {
 struct frag {
 	char *str[FUZZY_POINT_MAX]; /* only use for fuzzy node */
 	int count;
+	int flags;
+#define _FLAGS_START_FUZZY 		(1 << 0)
+#define _FLAGS_END_FUZZY 		(1 << 1)
 };
 
 struct fuzzydirent {
@@ -101,8 +104,15 @@ static int recurse_dir(char *path, int depth,
 				continue;
 		} else {
 			ptr = dp->d_name;
-			/* FIXME: bug */
-			for(i=0; i<fdir->frag.count; i++) {
+			ptr = strstr(ptr, fdir->frag.str[0]);
+			if(ptr == NULL) {
+				continue;
+			} else if(!(fdir->frag.flags & _FLAGS_START_FUZZY) && (ptr != dp->d_name)) {
+				/* The first fragment is not fuzzy: ptr don't move */
+				continue;
+			}
+
+			for(i=1; i<fdir->frag.count; i++) {
 				ptr = strstr(ptr, fdir->frag.str[i]);
 				if(ptr == NULL) {
 					break;
@@ -111,6 +121,13 @@ static int recurse_dir(char *path, int depth,
 
 			if(fdir->frag.count != 0 && i != fdir->frag.count)
 				continue;
+
+			/* If last fragment is not fuzzy: compare str */
+			if(ptr && !(fdir->frag.flags & _FLAGS_END_FUZZY)) {
+				int l = fdir->frag.count;
+				if(l > 0 && strcmp(ptr, fdir->frag.str[l - 1])) 
+					continue;
+			}
 		}
 
 		if(depth + 1 == depthmax) {
@@ -146,11 +163,19 @@ static int fuzzy2path(char *path, char *outpath)
 	while((token = strsep(&path, "/")) != NULL) {
 		char *p, *ptr;
 		int j = 0;
+		int l;
 
 		if(!strcmp(token, ""))
 			continue;
 
 		ptr = token;
+		fdir[cnt].frag.flags = 0;
+		if(ptr[0] == '*')
+			fdir[cnt].frag.flags |= _FLAGS_START_FUZZY;
+		l = strlen(ptr);	
+		if(l > 0 && ptr[l - 1] == '*')
+			fdir[cnt].frag.flags |= _FLAGS_END_FUZZY;
+
 		while((p = strchr(ptr, '*')) != NULL) {
 			if(p != ptr) {
 				fdir[cnt].frag.str[j] = ptr;
@@ -166,6 +191,8 @@ static int fuzzy2path(char *path, char *outpath)
 			fdir[cnt].type = DIRENT_TYPE_FUZZY;
 		}
 		if(fdir[cnt].type == DIRENT_TYPE_FUZZY) {
+			/* The last fragment */
+			fdir[cnt].frag.str[j++] = ptr;
 			fdir[cnt].frag.count = j;
 		} else {
 			fdir[cnt].type = DIRENT_TYPE_NORMAL;

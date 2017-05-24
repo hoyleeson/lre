@@ -241,6 +241,14 @@ done:
 }
 
 /* FIXME: token expand */
+static int lexer_token_expands(struct interp_context *ctx)
+{
+	ctx->tokencap *= 2;
+	ctx->tokens = realloc(ctx->tokens, sizeof(struct lex_token) * ctx->tokencap);
+	if(!ctx->tokens)
+		return -EINVAL;
+	return 0;
+}
 
 static int lexer_read_token(struct interp_context *ctx)
 {
@@ -256,6 +264,11 @@ static int lexer_read_token(struct interp_context *ctx)
 			continue;
 		else {
 			loge("Lexer err: get next token failed.");
+			return -EINVAL;
+		}
+		if(ctx->tokencnt >= ctx->tokencap && 
+				lexer_token_expands(ctx)) {
+			loge("Lexer err: expands lex token stack error.");
 			return -EINVAL;
 		}
 	}

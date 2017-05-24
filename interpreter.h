@@ -357,7 +357,7 @@ int interp_context_reload_code(struct interp_context *ctx, const char *code);
 int interpreter_init(void);
 int interpreter_execute(const char *code, struct lre_result *res);
 void interpreter_dump(void);
-
+void interpreter_release(void);
 
 
 /* install/find keyword */

@@ -320,6 +320,7 @@ void lre_release(void)
 	lrc_builtin_release();
 
 	lre_macro_release();
+	interpreter_release();
 	lre_conf_release();
 	log_release();
 }
