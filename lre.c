@@ -112,6 +112,7 @@ static int lrc_call_register(struct keyword_stub *parent, struct lrc_stub_call *
 	struct lrc_stub_arg *arg;
 	struct lrc_stub_var *var;
 
+	logi("Register lrc call '%s'.", call->keyword);
 	if(!call->exec) {
 		loge("Lrc call->exec callback must be defined");	
 		return -EINVAL;
@@ -152,7 +153,7 @@ static int lrc_func_register(struct keyword_stub *parent, struct lrc_stub_func *
 	struct lrc_stub_var *var;
 	struct lrc_stub_func *subfunc;
 
-	loge("Register lrc func '%s'.", func->keyword);
+	logi("Register lrc func '%s'.", func->keyword);
 	kstub = keyword_install(KEYSTUB_TYPE_FUNC, func->keyword, func, parent);
 	if(!kstub) {
 		loge("Failed to register lrc func '%s'.", func->keyword);
@@ -331,7 +332,7 @@ void lrc_module_unregister(struct lrc_module *module)
 int lre_init(void)
 {
 	int ret;
-	log_init(LOG_MODE_CALLBACK, LOG_VERBOSE);
+	log_init(LOG_MODE_CALLBACK, LOG_DBG);
 
 	lre_conf_init();
 	ret = interpreter_init();
