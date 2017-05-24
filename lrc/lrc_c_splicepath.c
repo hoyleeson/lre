@@ -81,6 +81,7 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	splicepath->basepath = strdup(str);
+	assert_ptr(splicepath->basepath);
 	logd("splicepath arg handler: basepath:%s", splicepath->basepath);
 	return LRE_RET_OK;
 }
@@ -100,6 +101,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	splicepath->path = strdup(str);
+	assert_ptr(splicepath->path);
 	logd("splicepath arg handler: path:%s", splicepath->path);
 	return LRE_RET_OK;
 }

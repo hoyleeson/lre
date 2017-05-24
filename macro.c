@@ -108,6 +108,7 @@ char *lre_create_code_by_macro(struct lre_macro *macro,
 	}
 
 	ptr = strdup(code);
+	assert_ptr(ptr);
 	return ptr;
 }
 
@@ -188,9 +189,10 @@ static int lre_macro_content2token(struct lre_macro *macro, char *content)
 	macro->token = xzalloc(sizeof(struct lre_macro_token) * cnt);
 	for(i=0; i<cnt; i++) {
 		macro->token[i].type = token[i].type;
-		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD)
+		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD) {
 			macro->token[i].wordptr = strdup(token[i].wordptr);
-		else
+			assert_ptr(macro->token[i].wordptr);
+		} else
 			macro->token[i].argindex = token[i].argindex;
 	}
 	macro->tokencnt = cnt;
@@ -235,6 +237,7 @@ static int lre_macro_arg_parse(struct interp_context *ctx,
 		}
 
 		arg->keyword = strdup(token->word);
+		assert_ptr(arg->keyword);
 		arg->wordlen = strlen(arg->keyword);
 		logv("arg[%d]: %s", i, arg->keyword);
 
@@ -268,6 +271,7 @@ static int lre_macro_parse(struct interp_context *ctx)
 	macro = xzalloc(sizeof(*macro));
 
 	macro->macro = strdup(ctx->code);
+	assert_ptr(macro->macro);
 
 	token = read_token(ctx);
 	if(!token || (token->type != TOKEN_TYPE_KEYWORD)) {
@@ -276,6 +280,7 @@ static int lre_macro_parse(struct interp_context *ctx)
 	}
 
 	macro->keyword = strdup(token->word);
+	assert_ptr(macro->keyword);
 	logv("macro: %s", macro->keyword);
 
 	macro->argc = lre_macro_arg_parse(ctx, macro->args);
@@ -465,6 +470,7 @@ void lre_macro_release(void)
 				if(macro->token[j].type == MACRO_TOKEN_TYPE_WORD)
 					free(macro->token[j].wordptr);
 			}
+			free(macro->macro);
 			free(macro->token);
 			free(macro);
 		}

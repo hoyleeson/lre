@@ -368,6 +368,7 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	fuzzypath->basepath = strdup(str);
+	assert_ptr(fuzzypath->basepath);
 	logd("lrc 'fuzzypath' arg: basepath:%s", fuzzypath->basepath);
 
 	return LRE_RET_OK;
@@ -389,6 +390,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	fuzzypath->path = strdup(str);
+	assert_ptr(fuzzypath->path);
 	logd("lrc 'fuzzypath' arg: path:%s", fuzzypath->path);
 	return LRE_RET_OK;
 }

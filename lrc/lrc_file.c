@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <pwd.h>
 
+#include "../log.h"
 #include "../utils.h"
 #include "../lre.h"
 
@@ -95,6 +96,7 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	file->path = strdup(str);
+	assert_ptr(file->path);
 	printf("path:%s\n", file->path);
 	return LRE_RET_OK;
 }

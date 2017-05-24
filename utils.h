@@ -46,6 +46,14 @@ static inline uint32_t hash_32(int val, unsigned int bits)
 #define min(a, b)   (((a) > (b)) ? (b) : (a))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+#define assert_ptr(ptr)  	\
+	do { 					\
+		if((ptr) == NULL) { \
+			fatal("assert_ptr: Null Pointer Exception.(%s:%d)", __func__, __LINE__); \
+		} 					\
+	} while(0)
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

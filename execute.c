@@ -452,8 +452,10 @@ int interp_execute(struct interp_context *ctx)
 		ctx->errcode = ret;
 	}
 
-	if(detail->len > 0)
+	if(detail->len > 0) {
 		ctx->details = strdup(detail->detail);
+		assert_ptr(ctx->details);
+	}
 
 	lre_exec_detail_release(detail);
 	return 0;

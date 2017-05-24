@@ -14,6 +14,7 @@ void lre_set_conf_path(const char *path)
 		free(conf_path);
 
 	conf_path = strdup(path);
+	assert_ptr(conf_path);
 	logi("lre conf path:%s\n", conf_path);
 }
 

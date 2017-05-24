@@ -118,13 +118,16 @@ static struct process_info *get_process_info(int pid)
 	}
 
 	psinfo->user = strdup(user);
+	assert_ptr(psinfo->user);
 
 	sprintf(buf, "/proc/%d/exe", pid);
 	r = readlink(buf, path, PATH_MAX - 1);
 	if(r <= 0)
 		psinfo->binpath = NULL;
-	else
+	else {
 		psinfo->binpath = strdup(path);
+		assert_ptr(psinfo->binpath);
+	}
 
 	sprintf(buf, "/proc/%d/stat", pid);
 	fd = open(buf, O_RDONLY);
@@ -150,6 +153,7 @@ static struct process_info *get_process_info(int pid)
 	*ptr++ = '\0';           // and null-terminate name.
 
 	psinfo->name = strdup(name);
+	assert_ptr(psinfo->name);
 
 	ptr++;          // skip " "
 	nexttok(&ptr);
@@ -169,6 +173,7 @@ static struct process_info *get_process_info(int pid)
 	buf[r] = 0;
 
 	psinfo->cmdline = strdup(buf);
+	assert_ptr(psinfo->cmdline);
 
 	return psinfo;
 }
@@ -321,6 +326,7 @@ static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	process->procname = strdup(str);
+	assert_ptr(process->procname);
 	printf("lrc 'process' arg: procname: %s\n", process->procname);
 	return LRE_RET_OK;
 }
@@ -340,6 +346,7 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 		return LRE_RET_ERROR;
 
 	process->procpath = strdup(str);
+	assert_ptr(process->procpath);
 	printf("lrc 'process' arg: procpath: %s\n", process->procpath);
 	return LRE_RET_OK;
 }

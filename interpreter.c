@@ -100,6 +100,7 @@ static struct keyword_stub *keyword_stub_create(int type, const char *keyword,
 
 	keystub->type = type;
 	keystub->keyword = strdup(keyword);
+	assert_ptr(keystub->keyword);
 	keystub->data = data;
 
 	if(type == KEYSTUB_TYPE_FUNC || 
@@ -168,6 +169,7 @@ struct interp_context *interp_context_create(const char *code)
 	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
 
 	ctx->code = strdup(code);
+	assert_ptr(ctx->code);
 	ctx->root = NULL;
 
 	ctx->wordbuf = xzalloc(CODE_MAX_LEN);
@@ -191,6 +193,7 @@ int interp_context_reload_code(struct interp_context *ctx, const char *code)
 {
 	free(ctx->code);
 	ctx->code = strdup(code);
+	assert_ptr(ctx->code);
 
 	memset(ctx->wordbuf, 0, CODE_MAX_LEN);
 	memset(ctx->tokens, 0, sizeof(struct lex_token) * ctx->tokencap);
@@ -322,6 +325,7 @@ err:
 	res->result = LRE_RESULT_UNKNOWN;
 	res->errcode = ret;
 	res->details = strdup(errstr);
+	assert_ptr(res->details);
 	interp_context_destroy(ctx);
 	return ret;
 }

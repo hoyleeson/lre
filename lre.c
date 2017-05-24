@@ -17,6 +17,7 @@ void lre_value_dup2_string(struct lre_value *val, const char *str)
 {
 	val->type = LRE_ARG_TYPE_STRING;
 	val->ptr = val->valstring = strdup(str);
+	assert_ptr(val->ptr);
 	val->flags = LRE_VALUE_F_NEEDFREE;
 }
 

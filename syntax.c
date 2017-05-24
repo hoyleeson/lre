@@ -507,6 +507,7 @@ static int syntax_parse_val(struct interp_context *ctx,
 
 			exprval = syntax_val_create();
 			exprval->val = strdup(val);
+			assert_ptr(exprval->val);
 			exprval->isvar = isvar;
 			node = &exprval->node;
 			break;
@@ -542,6 +543,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 	key = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(key, err);
 	expr->key = strdup(key);
+	assert_ptr(expr->key);
 	logd("Syntax: parse expr '%s'", expr->key);
 
 	opt = read_operator(ctx);
@@ -695,6 +697,7 @@ static int syntax_parse_func_args(struct interp_context *ctx,
 		argkey = read_keyword(ctx);
 		CHECK_KEYWORD_GOTO(argkey, err);
 		args->args[i].key = strdup(argkey);
+		assert_ptr(args->args[i].key);
 		logd("Syntax: parse args '%s'", args->args[i].key);
 
 		opt = read_operator(ctx);
@@ -760,6 +763,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
 	call->keyword = strdup(keyword);
+	assert_ptr(call->keyword);
 
 	logd("Syntax: parse call '%s'", call->keyword);
 	bracket = read_bracket(ctx);
@@ -802,6 +806,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
 	func->keyword = strdup(keyword);
+	assert_ptr(func->keyword);
 	logd("Syntax: parse func '%s'", func->keyword);
 
 	bracket = read_bracket(ctx);
