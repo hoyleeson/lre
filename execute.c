@@ -106,12 +106,15 @@ static int execute_syntax_val(struct syntax_root *root,
 			case SYNTAX_NODE_TYPE_VAL:	
 				exprval = container_of(node, struct syntax_val, node);
 				if(exprval->isvar) {
-					struct keyword_stub *valstub;
-					valstub = exprval->valstub;
-					valstub->var_handler(handle, &tmparg);
+					struct keyword_stub *vstub;
+					struct lrc_stub_var *stubvar;
+
+					vstub = exprval->valstub;
+					stubvar = (struct lrc_stub_var *)vstub->data;
+					stubvar->handler(handle, &tmparg);
 					if(ret != LRE_RET_OK) {
-						loge("Execute err: failed to call '%s' var_handler.", 
-								valstub->keyword);
+						loge("Execute err: failed to call '%s' var handler.", 
+								vstub->keyword);
 						goto out;	
 					}
 					break;
@@ -169,28 +172,30 @@ out:
 static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ctx)
 {
 	int ret;
-	struct keyword_stub *keystub;
+	struct keyword_stub *estub;
+	struct lrc_stub_expr *stubexpr;
 	struct lre_value arg;
 	lrc_obj_t *handle;
 
 	handle = exec_ctx_get_handle(ctx);
 
-	keystub = expr->keystub;
+	estub = expr->keystub;
+	stubexpr = (struct lrc_stub_expr *)estub->data;
 
-	logv("Execute expr '%s'.", keystub->keyword);
+	logv("Execute expr '%s'.", estub->keyword);
 	arg.type = LRE_ARG_TYPE_UNKNOWN;
 	ret = execute_syntax_val(&expr->valchilds, ctx, &arg);
 	if(ret) {
-		loge("Execute err: expr '%s' to lre_value err.", keystub->keyword);
+		loge("Execute err: expr '%s' to lre_value err.", estub->keyword);
 		return RET_DEAD_VAL;
 	}
 
-	ret = keystub->expr_handler(handle, expr->opt, &arg);
+	ret = stubexpr->handler(handle, expr->opt, &arg);
 	if(!vaild_lre_results(ret)) {
-		loge("Execute err: '%s' expr handler exec err.", keystub->keyword);
+		loge("Execute err: failed to call '%s' expr handler.", estub->keyword);
 		return RET_DEAD_VAL;
 	}
-	logi("Execute expr '%s' result: %d.", keystub->keyword, ret);
+	logi("Execute expr '%s' result: %d.", estub->keyword, ret);
 
 	return ret;
 }
@@ -199,128 +204,138 @@ static int execute_syntax_func(struct syntax_func *func,
 		struct exec_context *ctx)
 {
 	int ret;
-	struct keyword_stub *funcstub;
-	struct lrc_stub_func *lsfunc;
+	struct keyword_stub *fstub;
+	struct lrc_stub_func *stubfunc;
 	lrc_obj_t *handle;
 
-	funcstub = func->keystub;
+	fstub = func->keystub;
+	stubfunc = (struct lrc_stub_func *)fstub->data;
 
-	logd("Execute func '%s'.", funcstub->keyword);
-	handle = funcstub->func_handler();
+	logd("Execute func '%s'.", fstub->keyword);
+	handle = stubfunc->constructor();
 	if(!handle) {
-		loge("Execute err: failed to call '%s' func_handler.", funcstub->keyword);
-		goto out;
+		loge("Execute err: failed to call '%s' func constructor.", fstub->keyword);
+		return RET_DEAD_VAL;
 	}
 
 	handle->type = LRC_OBJECT_FUNC;
-	lsfunc = (struct lrc_stub_func *)funcstub->data;
 	exec_ctx_push_handle(ctx, handle);
 
 	if(func->args.count > 0) {
 		int i;
-		struct syntax_args *args = &func->args;
 		struct lre_value arg;
-		struct keyword_stub *argstub;
+		struct keyword_stub *astub;
+		struct lrc_stub_arg *stubarg;
+		struct syntax_args *args = &func->args;
 
 		for(i=0; i<args->count; i++) {
-			argstub = args->args[i].keystub;
+			astub = args->args[i].keystub;
+			stubarg = (struct lrc_stub_arg *)astub->data;
 
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
 			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
 			if(ret) {
-				loge("Execute err: func arg '%s' to lre_value err.", argstub->keyword);
-				return RET_DEAD_VAL;
+				loge("Execute err: func arg '%s' to lre_value err.", astub->keyword);
+				ret = RET_DEAD_VAL;
+				goto out;
 			}
 
-			ret = argstub->arg_handler(handle, &arg);
+			ret = stubarg->handler(handle, &arg);
 			if(ret != LRE_RET_OK) {
-				loge("Execute err: failed to call '%s' arg_handler.(%d)",
-					   	argstub->keyword, ret);
+				loge("Execute err: failed to call '%s' arg handler.(%d)",
+					   	astub->keyword, ret);
+				ret = RET_DEAD_VAL;
 				goto out;
 			}
 		}
 	}
 
-	if(lsfunc->exec) {
-		ret = lsfunc->exec(handle);
+	if(stubfunc->exec) {
+		ret = stubfunc->exec(handle);
 		if(ret) {
-			loge("Execute err: failed to func '%s' inner func.", funcstub->keyword);
-			ret = -EINVAL;
+			loge("Execute err: failed to func '%s' inner func.", fstub->keyword);
+			ret = RET_DEAD_VAL;
 			goto out;
 		}
 	}
 
 	ret = execute_syntax_childs(&func->body.childs, ctx);
 
+out:
+	if(stubfunc->destructor)
+		stubfunc->destructor(handle);
+
 	exec_ctx_pop_handle(ctx);
 	return ret;
-
-out:
-	return RET_DEAD_VAL;
 }
 
 static int execute_syntax_call(struct syntax_call *call, 
 		struct exec_context *ctx, struct lre_value *arg)
 {
 	int ret;
-	struct keyword_stub *callstub;
-	struct lrc_stub_call *lscall;
+	struct keyword_stub *cstub;
+	struct lrc_stub_call *stubcall;
 	lrc_obj_t *handle;
 
-	callstub = call->keystub;
+	cstub = call->keystub;
 
-	logd("Execute call '%s'.", callstub->keyword);
-	handle = callstub->call_handler();
+	logd("Execute call '%s'.", cstub->keyword);
+	stubcall = (struct lrc_stub_call *)cstub->data;
+	handle = stubcall->constructor();
 	if(!handle) {
-		loge("Execute err: failed to call '%s' call_handler.", callstub->keyword);
+		loge("Execute err: failed to call '%s' call constructor.", cstub->keyword);
 		return -EINVAL;
 	}
 
 	handle->type = LRC_OBJECT_CALL;
-	lscall = (struct lrc_stub_call *)callstub->data;
 	exec_ctx_push_handle(ctx, handle);
 
 	if(call->args.count > 0) {
 		int i;
-		struct syntax_args *args = &call->args;
 		struct lre_value arg;
-		struct keyword_stub *argstub;
+		struct keyword_stub *astub;
+		struct lrc_stub_arg *stubarg;
+		struct syntax_args *args = &call->args;
 
 		for(i=0; i<args->count; i++) {
-			argstub = args->args[i].keystub;
+			astub = args->args[i].keystub;
+			stubarg = (struct lrc_stub_arg *)astub->data;
 
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
 			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
 			if(ret) {
-				loge("Execute err: call arg '%s' to lre_vaule err.", argstub->keyword);
+				loge("Execute err: call arg '%s' to lre_vaule err.", astub->keyword);
 				return ret;
 			}
 
-			ret = argstub->arg_handler(handle, &arg);
+			ret = stubarg->handler(handle, &arg);
 			if(ret != LRE_RET_OK) {
-				loge("Execute err: failed to call '%s' arg_handler.(%d)", 
-						argstub->keyword, ret);
+				loge("Execute err: failed to call '%s' arg handler.(%d)", 
+						astub->keyword, ret);
 				ret = -EINVAL;
 				goto out;
 			}
 		}
 	}
 
-	if(!lscall->exec) {
-		loge("Execute err: lrc call '%s' execfn is NULL.", callstub->keyword);
+	if(!stubcall->exec) {
+		loge("Execute err: lrc call '%s' execfn is NULL.", cstub->keyword);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ret = lscall->exec(handle, arg);
+	ret = stubcall->exec(handle, arg);
 	if(ret) {
-		loge("Execute err: failed to call '%s' inner func.", callstub->keyword);
+		loge("Execute err: failed to call '%s' inner func.", cstub->keyword);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	ret = 0;
 out:
+	if(stubcall->destructor)
+		stubcall->destructor(handle);
+
 	exec_ctx_pop_handle(ctx);
 	return ret;
 }

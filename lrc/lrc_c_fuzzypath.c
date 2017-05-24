@@ -238,7 +238,6 @@ static int fuzzy2path(char *path, char *outpath)
 	return 0;
 }
 
-
 static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	char path[PATH_MAX] = {0};
@@ -321,12 +320,12 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 #endif
 
 	logd("lrc 'fuzzypath' realpath:%s", outpath);
-	val->type = LRE_ARG_TYPE_STRING;
-	val->valstring = outpath;
+	lre_value_dup2_string(val, outpath);
+	free(outpath);
 	return LRE_RET_OK;
 }
 
-static lrc_obj_t *func_fuzzypath_handler(void)
+static lrc_obj_t *fuzzypath_constructor(void)
 {
 	struct lrc_fuzzypath *fuzzypath;
 
@@ -341,17 +340,34 @@ static lrc_obj_t *func_fuzzypath_handler(void)
 	return (lrc_obj_t *)fuzzypath;
 }
 
-static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
+static void fuzzypath_destructor(lrc_obj_t *handle)
 {
 	struct lrc_fuzzypath *fuzzypath;
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
+
+	if(fuzzypath->basepath)
+		free(fuzzypath->basepath);
+	if(fuzzypath->path)
+		free(fuzzypath->path);
+	free(fuzzypath);
+}
+
+static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_fuzzypath *fuzzypath;
+
+	fuzzypath = (struct lrc_fuzzypath *)handle;
+	if(!lreval || !lre_value_is_string(lreval)) {
 		printf("lrc 'fuzzypath' err: basepath must be string\n");
 		return LRE_RET_ERROR;
 	}
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
 
-	fuzzypath->basepath = strdup(lreval->valstring);
+	fuzzypath->basepath = strdup(str);
 	logd("lrc 'fuzzypath' arg: basepath:%s", fuzzypath->basepath);
 
 	return LRE_RET_OK;
@@ -359,15 +375,20 @@ static int arg_basepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 {
+	const char *str;
 	struct lrc_fuzzypath *fuzzypath;
 
 	fuzzypath = (struct lrc_fuzzypath *)handle;
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
-		printf("lrc 'fuzzypath' err: path must be string\n");
+	if(!lreval || !lre_value_is_string(lreval)) {
+		printf("lrc 'fuzzypath' err: basepath must be string\n");
 		return LRE_RET_ERROR;
 	}
 
-	fuzzypath->path = strdup(lreval->valstring);
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
+
+	fuzzypath->path = strdup(str);
 	logd("lrc 'fuzzypath' arg: path:%s", fuzzypath->path);
 	return LRE_RET_OK;
 }
@@ -388,8 +409,9 @@ static struct lrc_stub_call lrc_calls[] = {
 	{
 		.keyword 	 = "fuzzypath",
 		.description = "Get path by fuzzypath.",
-		.handler 	 = func_fuzzypath_handler,
+		.constructor = fuzzypath_constructor,
 		.exec 		 = fuzzypath_execute,
+		.destructor  = fuzzypath_destructor,
 
 		.args 	   = fuzzypath_args,
 		.argcount  = ARRAY_SIZE(fuzzypath_args),

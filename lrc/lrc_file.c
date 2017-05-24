@@ -58,7 +58,7 @@ static int file_execute(lrc_obj_t *handle)
 	return 0;
 }
 
-static lrc_obj_t *func_file_handler(void)
+static lrc_obj_t *file_constructor(void)
 {
 	struct lrc_file *file;
 
@@ -66,20 +66,35 @@ static lrc_obj_t *func_file_handler(void)
 	if(!file) {
 		return (lrc_obj_t *)0;
 	}
-
+	file->path = NULL;
 	return (lrc_obj_t *)file;
 }
 
-static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
+static void file_destructor(lrc_obj_t *handle)
 {
 	struct lrc_file *file;
 
 	file = (struct lrc_file *)handle;
+	if(file->path)
+		free(file->path);
+	free(file);
+}
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
+static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_file *file;
+
+	file = (struct lrc_file *)handle;
+	if(!lreval || !lre_value_is_string(lreval)) {
+		printf("lrc 'file' err: path must be string\n");
+		return LRE_RET_ERROR;
+	}
+	str = lre_value_get_string(lreval);
+	if(!str)
 		return LRE_RET_ERROR;
 
-	file->path = strdup(lreval->valstring);
+	file->path = strdup(str);
 	printf("path:%s\n", file->path);
 	return LRE_RET_OK;
 }
@@ -93,11 +108,13 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(file->state == STATE_EXEC_FAILED)
 		return LRE_RET_ERROR;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
+	if(!lreval || !lre_value_is_int(lreval)) {
+		printf("lrc 'file' err: exist expr acceptable val: 1 or 0\n");
 		return LRE_RET_ERROR;
+	}
 
 	/*FIXME: verify val first */
-	ret = lre_compare_int(file->exist, lreval->valint, opt);
+	ret = lre_compare_int(file->exist, lre_value_get_int(lreval), opt);
 	if(!ret) {
 		char buf[128] = {0};
 		snprintf(buf, 128, "file '%s'%s exist", file->path, file->exist ? "":" not");
@@ -108,6 +125,7 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 
 static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
+	const char *str;
 	struct lrc_file *file;
 	char user[32];
 	struct passwd *pw;
@@ -116,9 +134,11 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(file->state == STATE_EXEC_FAILED)
 		return LRE_RET_ERROR;
 
-	if(!lreval || (lreval->type != LRE_ARG_TYPE_INT &&
-		   	lreval->type != LRE_ARG_TYPE_STRING))
+	if(!lreval || (!lre_value_is_int(lreval) &&
+				!lre_value_is_string(lreval))) {
+		printf("lrc 'file' err: unexpect owner val type.\n");
 		return LRE_RET_ERROR;
+	}
 
 	pw = getpwuid(file->owner);
 	if(pw == 0) {
@@ -127,12 +147,16 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 		strncpy(user, pw->pw_name, 32);
 	}
 
-	if(lreval->type == LRE_ARG_TYPE_INT) {
+	if(lre_value_is_int(lreval)) {
 		char u[32];	
-		sprintf(u, "%d", lreval->valint);
+		sprintf(u, "%d", lre_value_get_int(lreval));
 		return lre_compare_string(user, u, opt);
 	}
-	return lre_compare_string(user, lreval->valstring, opt);
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
+
+	return lre_compare_string(user, (char *)str, opt);
 }
 
 static int int2perm(int val)
@@ -150,18 +174,19 @@ static int int2perm(int val)
 
 static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
-	struct lrc_file *file;
 	unsigned int val;
+	struct lrc_file *file;
 
 	file = (struct lrc_file *)handle;
 	if(file->state == STATE_EXEC_FAILED)
 		return LRE_RET_ERROR;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
+	if(!lreval || !lre_value_is_int(lreval)) {
+		printf("lrc 'file' err: exist expr acceptable val: 1 or 0\n");
 		return LRE_RET_ERROR;
+	}
 
-	val = int2perm(lreval->valint);
-
+	val = int2perm(lre_value_get_int(lreval));
 	return lre_compare_int(file->permission, val, opt);
 }
 
@@ -193,8 +218,9 @@ static struct lrc_stub_func lrc_funcs[] = {
 	{
 		.keyword 	 = "file",
 		.description = "Check file permissions,owner,is exist or not, etc.",
-		.handler 	 = func_file_handler,
+		.constructor = file_constructor,
 		.exec  		 = file_execute,
+		.destructor  = file_destructor,
 
 		.args 	   = file_args,
 		.argcount  = ARRAY_SIZE(file_args),

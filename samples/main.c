@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include "../lre.h"
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
+
 char code1[] = "process(procname=\"sshd\", procpath=fuzzypath(path=\"/usr/*/sshd\")){running==1} && file(path=fuzzypath(basepath=processdir(procname=\"sshd\", procpath=fuzzypath(path=\"/usr/*/sshd\")), path=\"/etc/ssh/sshd_*\")){exist==1 && owner==root && permission==644}";
 
 /* test file */

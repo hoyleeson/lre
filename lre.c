@@ -12,6 +12,77 @@ struct lre_module {
 	struct list_head entry;
 };
 
+
+void lre_value_dup2_string(struct lre_value *val, const char *str)
+{
+	val->type = LRE_ARG_TYPE_STRING;
+	val->ptr = val->valstring = strdup(str);
+	val->flags = LRE_VALUE_F_NEEDFREE;
+}
+
+void lre_value_set_string(struct lre_value *val, char *str)
+{
+	val->type = LRE_ARG_TYPE_STRING;
+	val->valstring = str;
+}
+
+void lre_value_set_int(struct lre_value *val, int ival)
+{
+	val->type = LRE_ARG_TYPE_INT;
+	val->valint = ival;
+}
+
+void lre_value_set_double(struct lre_value *val, double dval)
+{
+	val->type = LRE_ARG_TYPE_DOUBLE;
+	val->valdouble = dval;
+}
+
+const char *lre_value_get_string(struct lre_value *val)
+{
+	return val->valstring;
+}
+
+int lre_value_get_int(struct lre_value *val)
+{
+	return val->valint;
+}
+
+double lre_value_get_double(struct lre_value *val)
+{
+	return val->valdouble;
+}
+
+int lre_value_is_int(struct lre_value *val)
+{
+	return (val->type == LRE_ARG_TYPE_INT);
+}
+
+int lre_value_is_double(struct lre_value *val)
+{
+	return (val->type == LRE_ARG_TYPE_DOUBLE);
+}
+
+int lre_value_is_string(struct lre_value *val)
+{
+	return (val->type == LRE_ARG_TYPE_STRING);
+}
+
+
+void lre_value_init(struct lre_value *val)
+{
+	val->type = LRE_ARG_TYPE_UNKNOWN;
+	val->ptr = NULL;
+	val->flags = 0;
+}
+
+void lre_value_release(struct lre_value *val)
+{
+	if(val->flags == LRE_VALUE_F_NEEDFREE)
+		free(val->ptr);
+}
+
+
 static void lre_module_create(struct lrc_module *module)
 {
 	struct lre_module *lrm;
@@ -32,108 +103,96 @@ static void lre_module_delete(struct lrc_module *module)
 	}
 }
 
-static int lrc_arg_register(struct keyword_stub *parent, struct lrc_stub_arg *arg)
-{
-	struct keyword_stub *kstub;
 
-	kstub = arg_keyword_install(arg->keyword, arg, arg->handler, parent);
-	if(!kstub) {
-		loge("Failed to register lrc arg '%s'.", arg->keyword);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int lrc_expr_register(struct keyword_stub *parent, struct lrc_stub_expr *expr)
-{
-	struct keyword_stub *kstub;
-
-	kstub = expr_keyword_install(expr->keyword, expr, expr->handler, parent);
-	if(!kstub) {
-		loge("Failed to register lrc expr '%s'.", expr->keyword);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int lrc_var_register(struct keyword_stub *parent, struct lrc_stub_var *var)
-{
-	struct keyword_stub *kstub;
-
-	kstub = var_keyword_install(var->keyword, var, var->handler, parent);
-	if(!kstub) {
-		loge("Failed to register lrc var '%s'.", var->keyword);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-#define CHECK_ERR(ret, tag) 	do { if(ret) goto tag; } while(0)
 static int lrc_call_register(struct keyword_stub *parent, struct lrc_stub_call *call)
 {
 	int i;
-	int ret;
 	struct keyword_stub *kstub;
+   	struct keyword_stub *substub;
+	struct lrc_stub_arg *arg;
+	struct lrc_stub_var *var;
 
 	if(!call->exec) {
 		loge("Lrc call->exec callback must be defined");	
 		return -EINVAL;
 	}
-	kstub = call_keyword_install(call->keyword, call, call->handler, parent);
+	kstub = keyword_install(KEYSTUB_TYPE_CALL, call->keyword, call, parent);
 	if(!kstub) {
 		loge("Failed to register lrc call '%s'.", call->keyword);
 		return -EINVAL;
 	}
 
 	for(i=0; i<call->argcount; i++) {
-		ret = lrc_arg_register(kstub, &call->args[i]);
-		CHECK_ERR(ret, err);
+		arg = &call->args[i];
+		substub = keyword_install(KEYSTUB_TYPE_ARG, arg->keyword, arg, kstub);
+		if(!substub) {
+			loge("Failed to register lrc arg '%s'.", arg->keyword);
+			return -EINVAL;
+		}
 	}
 	for(i=0; i<call->varcount; i++) {
-		ret = lrc_var_register(kstub, &call->vars[i]);
-		CHECK_ERR(ret, err);
+		var = &call->vars[i];
+		substub = keyword_install(KEYSTUB_TYPE_VAR, var->keyword, var, kstub);
+		if(!substub) {
+			loge("Failed to register lrc var '%s'.", var->keyword);
+			return -EINVAL;
+		}
 	}
 
 	return 0;
-err:
-	return -EINVAL;
 }
 
 static int lrc_func_register(struct keyword_stub *parent, struct lrc_stub_func *func)
 {
 	int i;
-	int ret;
 	struct keyword_stub *kstub;
+   	struct keyword_stub *substub;
+	struct lrc_stub_arg *arg;
+	struct lrc_stub_expr *expr;
+	struct lrc_stub_var *var;
+	struct lrc_stub_func *subfunc;
 
-	kstub = func_keyword_install(func->keyword, func, func->handler, parent);
+	loge("Register lrc func '%s'.", func->keyword);
+	kstub = keyword_install(KEYSTUB_TYPE_FUNC, func->keyword, func, parent);
 	if(!kstub) {
 		loge("Failed to register lrc func '%s'.", func->keyword);
 		return -EINVAL;
 	}
 
 	for(i=0; i<func->argcount; i++) {
-		ret = lrc_arg_register(kstub, &func->args[i]);
-		CHECK_ERR(ret, err);
+		arg = &func->args[i];
+		substub = keyword_install(KEYSTUB_TYPE_ARG, arg->keyword, arg, kstub);
+		if(!substub) {
+			loge("Failed to register lrc arg '%s'.", arg->keyword);
+			return -EINVAL;
+		}
 	}
 	for(i=0; i<func->exprcount; i++) {
-		ret = lrc_expr_register(kstub, &func->exprs[i]);
-		CHECK_ERR(ret, err);
+		expr = &func->exprs[i];
+		substub = keyword_install(KEYSTUB_TYPE_EXPR, expr->keyword, expr, kstub);
+		if(!substub) {
+			loge("Failed to register lrc expr '%s'.", expr->keyword);
+			return -EINVAL;
+		}
 	}
 	for(i=0; i<func->varcount; i++) {
-		ret = lrc_var_register(kstub, &func->vars[i]);
-		CHECK_ERR(ret, err);
+		var = &func->vars[i];
+		substub = keyword_install(KEYSTUB_TYPE_VAR, var->keyword, var, kstub);
+		if(!substub) {
+			loge("Failed to register lrc var '%s'.", var->keyword);
+			return -EINVAL;
+		}
 	}
 	for(i=0; i<func->funccount; i++) {
-		ret = lrc_func_register(kstub, &func->funcs[i]);
-		CHECK_ERR(ret, err);
+		subfunc = &func->funcs[i];
+		substub = keyword_install(KEYSTUB_TYPE_FUNC, subfunc->keyword, subfunc, kstub);
+		if(!substub) {
+			loge("Failed to register lrc subfunc '%s'.", subfunc->keyword);
+			return -EINVAL;
+		}
 	}
 
 	return 0;
-err:
-	return -EINVAL;
 }
 
 static void lrc_func_unregister(struct lrc_stub_func *func)
@@ -147,7 +206,7 @@ static void lrc_func_unregister(struct lrc_stub_func *func)
 	if(!kstub)
 		return;
 
-	func_keyword_uninstall(kstub);
+	keyword_uninstall(kstub);
 }
 
 static void lrc_call_unregister(struct lrc_stub_call *call)
@@ -161,9 +220,8 @@ static void lrc_call_unregister(struct lrc_stub_call *call)
 	if(!kstub)
 		return;
 
-	call_keyword_uninstall(kstub);
+	keyword_uninstall(kstub);
 }
-
 
 
 #define EXEC_DETAIL_GAP 		(4)
@@ -221,6 +279,7 @@ int lre_push_exec_detail(struct lrc_object *obj, const char *str)
 	return 0;
 }
 
+#define CHECK_ERR(ret, tag)    do { if(ret) goto tag; } while(0)
 int lrc_module_register(struct lrc_module *module)
 {
 	int i;

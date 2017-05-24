@@ -278,7 +278,7 @@ static int process_execute(lrc_obj_t *handle)
 }
 
 
-static lrc_obj_t *func_process_handler(void)
+static lrc_obj_t *process_constructor(void)
 {
 	struct lrc_process *process;
 
@@ -286,38 +286,60 @@ static lrc_obj_t *func_process_handler(void)
 	if(!process) {
 		return (lrc_obj_t *)0;
 	}
+	process->procname = NULL;
+	process->procpath = NULL;
+	process->count = 0;
 
 	return (lrc_obj_t *)process;
 }
 
-static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
+static void process_destructor(lrc_obj_t *handle)
 {
 	struct lrc_process *process;
 
 	process = (struct lrc_process *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
+	if(process->procname)
+		free(process->procname);
+	if(process->procpath)
+		free(process->procpath);
+	free(process);
+}
+
+static int arg_procname_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+	if(!lreval || !lre_value_is_string(lreval)) {
 		printf("lrc 'process' err: procname must be string\n");
 		return LRE_RET_ERROR;
 	}
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
 
-	process->procname = strdup(lreval->valstring);
+	process->procname = strdup(str);
 	printf("lrc 'process' arg: procname: %s\n", process->procname);
 	return LRE_RET_OK;
 }
 
 static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 {
+	const char *str;
 	struct lrc_process *process;
 
 	process = (struct lrc_process *)handle;
-
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring) {
+	if(!lreval || !lre_value_is_string(lreval)) {
 		printf("lrc 'process' err: procpath must be string\n");
 		return LRE_RET_ERROR;
 	}
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
 
-	process->procpath = strdup(lreval->valstring);
+	process->procpath = strdup(str);
 	printf("lrc 'process' arg: procpath: %s\n", process->procpath);
 	return LRE_RET_OK;
 }
@@ -331,13 +353,13 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	if(process->state != STATE_EXEC_SUCCESS)
 		return LRE_RET_ERROR;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT) {
+	if(!lreval || !lre_value_is_int(lreval)) {
 		printf("lrc 'process': running expr err, val must be '1' or '0'\n");
 		return LRE_RET_ERROR;
 	}
 
 	/*FIXME: verify val first */
-	return lre_compare_int(!!process->count, lreval->valint, opt);
+	return lre_compare_int(!!process->count, lre_value_get_int(lreval), opt);
 }
 
 static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
@@ -352,16 +374,17 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 	if(process->state != STATE_EXEC_SUCCESS)
 		return LRE_RET_ERROR;
 
-	if(!lreval || (lreval->type != LRE_ARG_TYPE_INT &&
-		   	lreval->type != LRE_ARG_TYPE_STRING)) {
+	if(!lreval || (!lre_value_is_int(lreval) &&
+				!lre_value_is_string(lreval))) {
 		printf("lrc 'process' err: procpath must be string or int\n");
 		return LRE_RET_ERROR;
 	}
 
-	if(lreval->type == LRE_ARG_TYPE_INT) {
-		sprintf(user, "%d", lreval->valint);
+	if(lre_value_is_int(lreval)) {
+		sprintf(user, "%d", lre_value_is_int(lreval));
 	} else {
-		sprintf(user, "%s", lreval->valstring);
+		const char *str = lre_value_get_string(lreval);
+		sprintf(user, "%s", str);
 	}
 
 	for(i=0; i<process->count; i++) {
@@ -450,7 +473,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 		return 0;
 	}
 
-	outpath = xzalloc(sizeof(PATH_ARR_MAX));
+	outpath = xzalloc(PATH_ARR_MAX + 1);
 
 	for(i=0; i< count; i++) {
 		char dir[PATH_MAX] = {0};
@@ -459,15 +482,15 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	}
 	outpath[len - 1] = '\0';
 	
-	val->valstring = outpath;
-	val->type = LRE_ARG_TYPE_STRING;
+	logi("Exec processdir call, result dir:%s.\n", outpath);
 
-	logw("Exec processdir call, result dir:%s.\n", outpath);
+	lre_value_dup2_string(val, outpath);
+	free(outpath);
 	process->state = STATE_EXEC_SUCCESS;
 	return 0;
 }
 
-static lrc_obj_t *func_processdir_handler(void)
+static lrc_obj_t *processdir_constructor(void)
 {
 	struct lrc_process *process;
 
@@ -479,6 +502,18 @@ static lrc_obj_t *func_processdir_handler(void)
 	return (lrc_obj_t *)process;
 }
 
+static void processdir_destructor(lrc_obj_t *handle)
+{
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+
+	if(process->procname)
+		free(process->procname);
+	if(process->procpath)
+		free(process->procpath);
+	free(process);
+}
 
 static struct lrc_stub_arg process_args[] = {
 	{
@@ -508,8 +543,9 @@ static struct lrc_stub_func lrc_funcs[] = {
 	{
 		.keyword 	 = "process",
 		.description = "Check process user,cmdline,running or not, etc.",
-		.handler 	 = func_process_handler,
+		.constructor = process_constructor,
 		.exec 		 = process_execute,
+		.destructor  = process_destructor,
 
 		.args 	   = process_args,
 		.argcount  = ARRAY_SIZE(process_args),
@@ -522,8 +558,9 @@ static struct lrc_stub_call lrc_calls[] = {
 	{
 		.keyword 	 = "processdir",
 		.description = "Get process directory.",
-		.handler 	 = func_processdir_handler,
+		.constructor = processdir_constructor,
 		.exec 		 = processdir_execute,
+		.destructor  = processdir_destructor,
 
 		.args 	   = process_args,
 		.argcount  = ARRAY_SIZE(process_args),

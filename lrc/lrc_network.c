@@ -12,6 +12,7 @@
 #include "../lre.h"
 #include "../utils.h"
 
+#define INVAILD_PORT 	(-1)
 
 struct net_state {
 	uint32_t localaddr;
@@ -172,7 +173,7 @@ static int network_info_load(void)
 
 struct lrc_network {
 	struct lrc_object base;
-	char *protocol;
+	char protocol[16];
 	int port;
 };
 
@@ -186,7 +187,7 @@ static int network_execute(lrc_obj_t *handle)
 	return 0;
 }
 
-static lrc_obj_t *func_network_handler(void)
+static lrc_obj_t *network_constructor(void)
 {
 	struct lrc_network *network;
 
@@ -195,19 +196,35 @@ static lrc_obj_t *func_network_handler(void)
 		return (lrc_obj_t *)0;
 	}
 
+	memset(network, 0, sizeof(network->protocol));
+	network->port = INVAILD_PORT;
 	return (lrc_obj_t *)network;
 }
 
-static int arg_protocol_handler(lrc_obj_t *handle, struct lre_value *lreval)
+static void network_destructor(lrc_obj_t *handle)
 {
 	struct lrc_network *network;
 
 	network = (struct lrc_network *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_STRING || !lreval->valstring)
+	free(network);
+}
+
+static int arg_protocol_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_network *network;
+
+	network = (struct lrc_network *)handle;
+	if(!lreval || !lre_value_is_string(lreval)) {
+		printf("lrc 'process' err: procname must be string\n");
+		return LRE_RET_ERROR;
+	}
+	str = lre_value_get_string(lreval);
+	if(!str)
 		return LRE_RET_ERROR;
 
-	network->protocol = strdup(lreval->valstring);
+	strncpy(network->protocol, str, 16);
 	printf("network arg: protocol:%s\n", network->protocol);
 
 	return LRE_RET_OK;
@@ -220,10 +237,12 @@ static int arg_port_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	network = (struct lrc_network *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
+	if(!lreval || !lre_value_is_int(lreval)) {
+		printf("lrc 'network': port arg err, range: 0~65535\n");
 		return LRE_RET_ERROR;
+	}
 
-	network->port = lreval->valint;
+	network->port = lre_value_get_int(lreval);
 	printf("network arg: port:%d\n", network->port);
 	return LRE_RESULT_TRUE;
 }
@@ -235,12 +254,15 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 	struct net_state *netstats;
 	int statcnt;
 	uint32_t listen_flags = 0;
+	int val;
 	int exist = 0;
 
 	network = (struct lrc_network *)handle;
 
-	if(!lreval || lreval->type != LRE_ARG_TYPE_INT)
+	if(!lreval || !lre_value_is_int(lreval)) {
+		printf("lrc 'network': listen expr err, val must be '1' or '0'\n");
 		return LRE_RET_ERROR;
+	}
 
 	if(!strcasecmp(network->protocol, "tcp")) {
 		netstats = tcp_stats;	
@@ -266,8 +288,9 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 			exist = 1;
 	}
 
+	val = lre_value_get_int(lreval);
 	/*FIXME: verify val first */
-	lre_compare_int(lreval->valint, exist, opt);
+	lre_compare_int(val, exist, opt);
 
 	return LRE_RESULT_TRUE;
 }
@@ -297,8 +320,9 @@ static struct lrc_stub_func lrc_funcs[] = {
 	{
 		.keyword 	 = "network",
 		.description = "Check network connect state, listen port, etc.",
-		.handler 	 = func_network_handler,
+		.constructor = network_constructor,
 		.exec 		 = network_execute,
+		.destructor  = network_destructor,
 
 		.args 	   = network_args,
 		.argcount  = ARRAY_SIZE(network_args),

@@ -14,40 +14,14 @@ extern "C" {
 #define _out
 #endif
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
-
-
-struct lre_value {
-#define LRE_ARG_TYPE_UNKNOWN 	(0)
-#define LRE_ARG_TYPE_INT 		(1)
-#define LRE_ARG_TYPE_DOUBLE 	(2)
-#define LRE_ARG_TYPE_STRING 	(3)
-	int type;
-	union {
-		int valint;
-		double  valdouble;
-		char *valstring;
-	};
-};
-
-struct lre_exec_detail {
-	char *detail;
-	int len;
-	int cap;
-};
+struct lre_value;
+struct lre_exec_detail;
 
 struct lrc_object {
 	int type;
 #define LRC_OBJECT_FUNC 		(0)
 #define LRC_OBJECT_CALL 		(1)
-	/*
-	union {
-		int (*execfunc)(struct lrc_object *);
-		int (*execcall)(struct lrc_object *, struct lre_value *);
-	};
-	*/
+
 	struct lre_exec_detail *detail;
 };
 
@@ -69,12 +43,6 @@ struct lre_result {
 /* Failed code the same to errno */
 #define LRE_RET_ERROR 		(0xdeaddead)
 
-int lre_compare_int(int a, int b, int op);
-int lre_compare_double(double a, double b, int op);
-int lre_compare_string(char *a, char *b, int op);
-
-int lre_push_exec_detail(struct lrc_object *obj, const char *str);
-
 int lre_initX(const char *path, void (*logcb)(int, const char *));
 int lre_init(void);
 
@@ -83,10 +51,33 @@ void lre_result_destroy(struct lre_result *res);
 
 void lre_release(void);
 
+
+/******************** lre utils ****************************/
+
 static inline int vaild_lre_results(int res)
 {
 	return (res == LRE_RESULT_TRUE || res == LRE_RESULT_FALSE);
 }
+
+void lre_value_dup2_string(struct lre_value *val, const char *str);
+void lre_value_set_string(struct lre_value *val, char *str);
+void lre_value_set_int(struct lre_value *val, int ival);
+void lre_value_set_double(struct lre_value *val, double dval);
+
+const char *lre_value_get_string(struct lre_value *val);
+int lre_value_get_int(struct lre_value *val);
+double lre_value_get_double(struct lre_value *val);
+
+int lre_value_is_int(struct lre_value *val);
+int lre_value_is_double(struct lre_value *val);
+int lre_value_is_string(struct lre_value *val);
+
+int lre_compare_int(int a, int b, int op);
+int lre_compare_double(double a, double b, int op);
+int lre_compare_string(char *a, char *b, int op);
+
+int lre_push_exec_detail(struct lrc_object *obj, const char *str);
+
 
 /***********************************************************/
 
@@ -117,8 +108,9 @@ struct lrc_stub_var {
 struct lrc_stub_call {
 	char *keyword;
 	char *description;
-	lrc_obj_t *(*handler)(void);
+	lrc_obj_t *(*constructor)(void);
 	int (*exec)(struct lrc_object *, struct lre_value *);
+	void (*destructor)(struct lrc_object *);
 
 	struct lrc_stub_arg *args;
 	int argcount;
@@ -129,8 +121,9 @@ struct lrc_stub_call {
 struct lrc_stub_func {
 	char *keyword;
 	char *description;
-	lrc_obj_t *(*handler)(void);
+	lrc_obj_t *(*constructor)(void);
 	int (*exec)(struct lrc_object *);
+	void (*destructor)(struct lrc_object *);
 
 	struct lrc_stub_arg *args;
 	int argcount;

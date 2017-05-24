@@ -108,14 +108,6 @@ enum keystub_type {
 struct keyword_stub {
 	int type;
 	char *keyword;
-	union {
-		lrc_obj_t *(*func_handler)(void);
-		lrc_obj_t *(*call_handler)(void);
-		int (*arg_handler)(lrc_obj_t *, struct lre_value *);
-		int (*expr_handler)(lrc_obj_t *, int, struct lre_value *);
-		int (*var_handler)(lrc_obj_t *, struct lre_value *);
-	};
-
 	void *data;
 	struct keyword_stub *parent;
 	keystub_vec_t *subvec;
@@ -160,7 +152,6 @@ struct sytax_keyval {
 	};
 
 	struct syntax_root valchilds;
-//	char *val;
 };
 
 
@@ -364,30 +355,12 @@ void interpreter_release(void);
 
 keystub_vec_t *get_root_keyvec(void);
 
-struct keyword_stub *func_keyword_install(const char *keyword, void *data,
-		lrc_obj_t *(*handler)(void),
-		struct keyword_stub *parent);
-
-struct keyword_stub *call_keyword_install(const char *keyword, void *data,
-		lrc_obj_t *(*handler)(void),
-		struct keyword_stub *parent);
-
-struct keyword_stub *arg_keyword_install(const char *keyword, void *data,
-		int (*handler)(lrc_obj_t *, struct lre_value *),
-		struct keyword_stub *parent);
-
-struct keyword_stub *expr_keyword_install(const char *keyword, void *data,
-		int (*handler)(lrc_obj_t *, int, struct lre_value *),
-		struct keyword_stub *parent);
-
-struct keyword_stub *var_keyword_install(const char *keyword, void *data,
-		int (*handler)(lrc_obj_t *, struct lre_value *),
-		struct keyword_stub *parent);
+struct keyword_stub *keyword_install(int type, const char *keyword,
+	   	void *data, struct keyword_stub *parent);
+void keyword_uninstall(struct keyword_stub *keystub);
 
 struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec,
 		const char *keyword);
 
-void func_keyword_uninstall(struct keyword_stub *keystub);
-void call_keyword_uninstall(struct keyword_stub *keystub);
 
 #endif

@@ -126,85 +126,21 @@ static void keyword_stub_destroy(struct keyword_stub *keystub)
 	free(keystub);
 }
 
-
-struct keyword_stub *func_keyword_install(const char *keyword, void *data,
-	   	lrc_obj_t *(*handler)(void),
-		struct keyword_stub *parent)
+struct keyword_stub *keyword_install(int type, const char *keyword,
+	   	void *data, struct keyword_stub *parent)
 {
 	struct keyword_stub *keystub;
 
-	keystub = keyword_stub_create(KEYSTUB_TYPE_FUNC, keyword, data);
-	keystub->func_handler = handler;
+	keystub = keyword_stub_create(type, keyword, data);
 	keystub->parent = parent;
 
 	keyword_stub_add(keystub, parent);
 	return keystub;
 }
 
-void func_keyword_uninstall(struct keyword_stub *keystub)
+void keyword_uninstall(struct keyword_stub *keystub)
 {
 	keyword_stub_destroy(keystub);
-}
-
-struct keyword_stub *call_keyword_install(const char *keyword, void *data,
-	   	lrc_obj_t *(*handler)(void),
-		struct keyword_stub *parent)
-{
-	struct keyword_stub *keystub;
-
-	keystub = keyword_stub_create(KEYSTUB_TYPE_CALL, keyword, data);
-	keystub->call_handler = handler;
-	keystub->parent = parent;
-
-	keyword_stub_add(keystub, parent);
-	return keystub;
-}
-
-void call_keyword_uninstall(struct keyword_stub *keystub)
-{
-	keyword_stub_destroy(keystub);
-}
-
-struct keyword_stub *arg_keyword_install(const char *keyword, void *data,
-	   	int (*handler)(lrc_obj_t *, struct lre_value *),
-		struct keyword_stub *parent)
-{
-	struct keyword_stub *keystub;
-
-	keystub = keyword_stub_create(KEYSTUB_TYPE_ARG, keyword, data);
-	keystub->arg_handler = handler;
-	keystub->parent = parent;
-
-	keyword_stub_add(keystub, parent);
-	return keystub;
-}
-
-struct keyword_stub *expr_keyword_install(const char *keyword, void *data,
-	   	int (*handler)(lrc_obj_t *, int, struct lre_value *),
-		struct keyword_stub *parent)
-{
-	struct keyword_stub *keystub;
-
-	keystub = keyword_stub_create(KEYSTUB_TYPE_EXPR, keyword, data);
-	keystub->expr_handler = handler;
-	keystub->parent = parent;
-
-	keyword_stub_add(keystub, parent);
-	return keystub;
-}
-
-struct keyword_stub *var_keyword_install(const char *keyword, void *data,
-		int (*handler)(lrc_obj_t *, struct lre_value *),
-		struct keyword_stub *parent)
-{
-	struct keyword_stub *keystub;
-
-	keystub = keyword_stub_create(KEYSTUB_TYPE_VAR, keyword, data);
-	keystub->var_handler = handler;
-	keystub->parent = parent;
-
-	keyword_stub_add(keystub, parent);
-	return keystub;
 }
 
 
