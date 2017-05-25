@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 double lre_calc_dobule(double a, double b, int op)
 {

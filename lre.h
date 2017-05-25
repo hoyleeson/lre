@@ -14,6 +14,7 @@ extern "C" {
 #define _out
 #endif
 
+struct lre_context;
 struct lre_value;
 struct lre_exec_detail;
 
@@ -45,11 +46,12 @@ struct lre_result {
 
 int lre_initX(const char *path, void (*logcb)(int, const char *));
 int lre_init(void);
-
-struct lre_result *lre_execute(const char *code);
-void lre_result_destroy(struct lre_result *res);
-
 void lre_release(void);
+
+struct lre_context *lre_context_create(void);
+void lre_context_destroy(struct lre_context *ctx);
+
+struct lre_result *lre_execute(struct lre_context *ctx, const char *code);
 
 
 /******************** lre utils ****************************/

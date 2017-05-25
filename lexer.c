@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 
 #define T_EOF 		(1)

@@ -9,8 +9,7 @@
 #include "utils.h"
 #include "conf.h"
 #include "log.h"
-#include "lre_internal.h"
-
+#include "mempool.h"
 
 #define SYNTAX_CODE_EOF 	(0xffff)
 #define CODE_MAX_LEN 		(4096)
@@ -205,6 +204,20 @@ struct syntax_content {
 	struct syntax_root childs;
 };
 
+/* Just use for create syntax node mempool */
+struct syntax_mpool_node {
+	union {
+		struct syntax_block b;
+		struct syntax_call c;
+		struct syntax_expr e;
+		struct syntax_func f;
+		struct syntax_val v;
+		struct syntax_valblock vb;
+		struct syntax_content co;
+	}u;
+};
+
+
 struct symbol_word {
 	char *sym;
 	int type;
@@ -218,11 +231,45 @@ struct lex_token {
 	int symbol;
 };
 
-struct interp_context {
-	char *code;
+#define DEFAULT_STACK_SIZE 		(16*1024)
 
-	/* Use for lexer analysis and syntax parse */
-	char *wordbuf;
+struct interp {
+	char *code;
+	int codelen;
+
+	/* 
+	 * Lex/Syntax stage: save the code fragment.
+	 * Execute stage: execute details infomation.
+	 * */
+	char *workbuf;
+	int bufsize;
+
+	/* 
+	 * Lex/Syntax stage: save struct lex_token ptr;
+	 * Execute stage: save lrc_obj_t ptr;
+	 * */
+	void *stacks;
+	int stacksize;
+
+	struct mempool syntax_mpool;
+};
+
+struct lex_tokens {
+	struct lex_token *tokens;
+	int tokenidx;
+	int tokencnt;
+	int tokencap;
+};
+
+struct exec_stacks {
+	lrc_obj_t *stack;	
+	int index;
+	int depth;
+};
+
+struct interp_context {
+	struct interp *interp;
+
 	struct lex_token *tokens;
 	int tokenidx;
 	int tokencnt;
@@ -232,7 +279,7 @@ struct interp_context {
 	char *wordptr;
 
 	/* syntax tree */
-	struct syntax_root *root;
+	struct syntax_root *tree;
 
 	/* Execute results return and details */
 	int results; /* Logic operation results (true or false) */
@@ -341,26 +388,14 @@ struct symbol_word *get_symbol_by_id(int sym);
 int get_symbol_type(int sym);
 const char *get_symbol_str(int sym);
 
-struct interp_context *interp_context_create(const char *code);
-void interp_context_destroy(struct interp_context *ctx);
+struct interp_context *interp_context_create(struct interp *interp, const char *code);
 int interp_context_reload_code(struct interp_context *ctx, const char *code);
+void interp_context_destroy(struct interp_context *ctx);
 
-int interpreter_init(void);
-int interpreter_execute(const char *code, struct lre_result *res);
-void interpreter_dump(void);
-void interpreter_release(void);
+int interpreter_execute(struct interp *interp, const char *code, struct lre_result *res);
 
-
-/* install/find keyword */
-
-keystub_vec_t *get_root_keyvec(void);
-
-struct keyword_stub *keyword_install(int type, const char *keyword,
-	   	void *data, struct keyword_stub *parent);
-void keyword_uninstall(struct keyword_stub *keystub);
-
-struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec,
-		const char *keyword);
-
+struct interp *interpreter_create(void);
+void interpreter_destroy(struct interp *interp);
 
 #endif
+

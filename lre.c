@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 #include "lrc/builtin_lrc.h"
 
 static LIST_HEAD(lre_modulelists);
@@ -83,6 +83,7 @@ void lre_value_release(struct lre_value *val)
 		free(val->ptr);
 }
 
+/****************************************************************/
 
 static void lre_module_create(struct lrc_module *module)
 {
@@ -226,36 +227,7 @@ static void lrc_call_unregister(struct lrc_stub_call *call)
 }
 
 
-#define EXEC_DETAIL_GAP 		(4)
 #define EXEC_DETAIL_UNIT_MAX 	(64)
-#define EXEC_DETAIL_LEN_MAX 	(100 * EXEC_DETAIL_UNIT_MAX)
-
-void lre_exec_detail_init(struct lre_exec_detail *detail, int cap)
-{
-	detail->detail = xzalloc(cap + EXEC_DETAIL_GAP);
-	detail->cap = cap;
-	detail->len = 0;
-}
-
-void lre_exec_detail_release(struct lre_exec_detail *detail)
-{
-	free(detail->detail);
-	detail->cap = detail->len = 0;
-}
-
-static void lre_exec_detail_expand(struct lre_exec_detail *detail)
-{
-	char *ptr;
-	int newcap;
-
-	newcap = detail->cap * 2;
-	ptr = realloc(detail->detail, newcap + EXEC_DETAIL_GAP);
-	if(!ptr) {
-		fatal("Expand exec detail memory failed.");
-	}
-	detail->cap = newcap;
-	detail->detail = ptr;
-}
 
 int lre_push_exec_detail(struct lrc_object *obj, const char *str)
 {
@@ -263,7 +235,7 @@ int lre_push_exec_detail(struct lrc_object *obj, const char *str)
 	int etc = 0;
 	struct lre_exec_detail *detail = obj->detail;
 
-	if(detail->len + EXEC_DETAIL_UNIT_MAX >= EXEC_DETAIL_LEN_MAX)
+	if(detail->len + EXEC_DETAIL_UNIT_MAX >= detail->cap)
 		return -ENOMEM;
 
 	len = strlen(str) + 1;
@@ -272,9 +244,6 @@ int lre_push_exec_detail(struct lrc_object *obj, const char *str)
 		len = EXEC_DETAIL_UNIT_MAX - 4;
 		etc = 1;
 	}
-
-	if(detail->cap - detail->len < len)
-		lre_exec_detail_expand(detail);
 
 	detail->len += snprintf(detail->detail + detail->len, len, "%s", str);
 	detail->len += sprintf(detail->detail + detail->len, "%s, ", etc ? "...": "");
@@ -330,22 +299,52 @@ void lrc_module_unregister(struct lrc_module *module)
 	lre_module_delete(module);
 }
 
+/****************************************************************/
+
+struct lre_result *lre_execute(struct lre_context *ctx, const char *code)
+{
+	int ret;
+
+	ret = interpreter_execute(ctx->interp, code, &ctx->res);
+	if(ret) {
+		loge("Error: Failed to interpret code:\n\t%s.", code);	
+	}
+	
+	return &ctx->res;
+}
+
+struct lre_context *lre_context_create(void)
+{
+	struct lre_context *ctx;
+	
+	ctx = xzalloc(sizeof(*ctx));
+
+	ctx->interp = interpreter_create();
+	return ctx;
+}
+
+void lre_context_destroy(struct lre_context *ctx)
+{
+	if(ctx->interp)
+		free(ctx->interp);
+
+	free(ctx);
+}
 
 int lre_init(void)
 {
 	int ret;
 	log_init(LOG_MODE_CALLBACK, LOG_DBG);
 
-	lre_conf_init();
-	ret = interpreter_init();
+	ret = lre_conf_init();
+	ret = lre_keyword_init();
+	ret = lre_macro_init();
 	if(ret) {
-		loge("Interpreter initialize failed.");
-		return ret;
+	
 	}
 
 	lrc_builtin_init();
-	lre_macro_init();
-	//interpreter_dump();
+	logi("Logic rule engine initialized.");
 	return 0;
 }
 
@@ -356,34 +355,15 @@ int lre_initX(const char *path, void (*logcb)(int, const char *))
 	return lre_init();
 }
 
-struct lre_result *lre_execute(const char *code)
-{
-	int ret;
-	struct lre_result *res;	
-
-	res = xzalloc(sizeof(*res));
-	ret = interpreter_execute(code, res);
-	if(ret) {
-		loge("Error: Failed to interpret code:\n\t%s.", code);	
-	}
-	
-	return res;
-}
-
-void lre_result_destroy(struct lre_result *res)
-{
-	if(res->details)
-		free(res->details);
-	free(res);
-}
-
 void lre_release(void)
 {
 	lrc_builtin_release();
 
 	lre_macro_release();
-	interpreter_release();
+	lre_keyword_release();
 	lre_conf_release();
+
 	log_release();
+	logi("Logic rule engine released.");
 }
 

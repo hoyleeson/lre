@@ -45,10 +45,12 @@ int main(int argc, char **argv)
 {
 	int i;
 	struct lre_result *result;
+	struct lre_context *ctx;
 	lre_init();
+	ctx = lre_context_create();
 
 	for(i=0; i<ARRAY_SIZE(code); i++) {
-		result = lre_execute(code[i]);
+		result = lre_execute(ctx, code[i]);
 		if(!result) {
 			printf("not result.");
 			continue;
@@ -59,9 +61,9 @@ int main(int argc, char **argv)
 		else
 			printf("exec error, errcode:%d, detail:%s\n", result->errcode, result->details);
 		printf("\n");
-		lre_result_destroy(result);
 	}
 
+	lre_context_destroy(ctx);
 	lre_release();
 
 	return 0;

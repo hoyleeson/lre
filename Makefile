@@ -1,7 +1,7 @@
 LDFLAGS := -ldl -lpthread
 CFLAGS := -g -Ofast -Wall -fPIC
 
-SRCS := lre.c  conf.c  calculate.c  interpreter.c  macro.c  preprocess.c  syntax.c  lexer.c  semantic.c  execute.c  \
+SRCS := lre.c  mempool.c  conf.c  calculate.c  keyword.c  interpreter.c  macro.c  preprocess.c  syntax.c  lexer.c  semantic.c  execute.c  \
 	log.c  utils.c  vector.c
 
 include lrc/Build.mk

@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 #define LR_GLOBAL_MACRO_PATH 	"global_macro.lr"
 
@@ -14,6 +14,7 @@
 static int macro_hlist_cap_bits;
 static int macro_count;
 static struct hlist_head *macro_hlists;
+static struct interp *macro_interp;
 
 
 struct lre_macro_arg {
@@ -269,10 +270,11 @@ static int lre_macro_parse(struct interp_context *ctx)
 	char *ptr;
 	struct lex_token *token;
 	struct lre_macro *macro;
+	struct interp *interp = ctx->interp;
 
 	macro = xzalloc(sizeof(*macro));
 
-	macro->macro = strdup(ctx->code);
+	macro->macro = strdup(interp->code);
 	assert_ptr(macro->macro);
 
 	token = read_token(ctx);
@@ -317,7 +319,7 @@ static int lre_macro_conf_parse(char *mstr)
 	struct lex_token *token;
 	struct interp_context *ctx;
 
-	ctx = interp_context_create(mstr);
+	ctx = interp_context_create(macro_interp, mstr);
 
 	ret = interp_lexer_analysis(ctx);
 	if(ret) {
@@ -433,6 +435,8 @@ int lre_macro_init(void)
 	int sz;
 	int ret;
 
+	macro_interp = interpreter_create();
+
 	macro_hlist_cap_bits = DEFAULT_MACRO_HLIST_BIT;
 	macro_count = 0;
 	sz = sizeof(struct hlist_head) * (1 << macro_hlist_cap_bits);
@@ -446,7 +450,6 @@ int lre_macro_init(void)
 		loge("Failed to load macro.");
 		return -EINVAL;
 	}
-
 	logi("Load macro success. count:%d", macro_count);
 	/*	lre_macro_dump(); */
 	return 0;

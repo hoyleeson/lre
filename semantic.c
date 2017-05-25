@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 static struct keyword_stub *semantic_find_keystub(keystub_vec_t *kwvec, 
 		const char *keyword)
@@ -247,7 +247,7 @@ int interp_semantic_analysis(struct interp_context *ctx)
 
 	logd("Start analysis semantic.");
 	kwvec = get_root_keyvec();
-	ret = semanitic_tree_parse(ctx->root, kwvec);
+	ret = semanitic_tree_parse(ctx->tree, kwvec);
 	if(ret) {
 		loge("Semanitic err: semantic analysis error.");
 	}

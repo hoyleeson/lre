@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 
 static int prase_macro_call_arg(struct interp_context *ctx, 

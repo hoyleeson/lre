@@ -2,18 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 
 #define VAL_UNINITIALIZED 	(0xff)
 
-#define EXEC_STACK_DEPTH 	(4096)	
 #define EXEC_STACK_GAP  	(64)
 
 
 struct exec_context {
-	lrc_obj_t *stack[EXEC_STACK_DEPTH];	
+	lrc_obj_t **stack;	
 	int index;
+	int depth;
+
 	struct lre_exec_detail detail;
 };
 
@@ -21,7 +22,7 @@ struct exec_context {
 static inline int exec_ctx_push_handle(struct exec_context *ctx, 
 		lrc_obj_t *handle)
 {
-	if(ctx->index + EXEC_STACK_GAP >= EXEC_STACK_DEPTH)
+	if(ctx->index + EXEC_STACK_GAP >= ctx->depth)
 		return -EINVAL;
 
 	ctx->stack[ctx->index++] = handle;
@@ -436,15 +437,21 @@ int interp_execute(struct interp_context *ctx)
 	int ret;
 	struct exec_context exec_ctx;
 	struct lre_exec_detail *detail;
+	struct interp *interp = ctx->interp;
 
-	memset(&exec_ctx, 0, sizeof(exec_ctx));
+	exec_ctx.stack = interp->stacks;
 	exec_ctx.index = 0;
+	exec_ctx.depth = interp->stacksize;
+
 	detail = &exec_ctx.detail;
 
-	lre_exec_detail_init(detail, 256);
+	detail->detail = interp->workbuf;
+	detail->len = 0;
+	detail->cap = interp->bufsize;
+	memset(detail->detail, 0, detail->cap);
 
 	logd("Start execute rules.");
-	ret = execute_syntax_tree(ctx->root, &exec_ctx);
+	ret = execute_syntax_tree(ctx->tree, &exec_ctx);
 	if(vaild_lre_results(ret)) {
 		ctx->results = ret;
 		ctx->errcode = LRE_RET_OK;
@@ -458,8 +465,6 @@ int interp_execute(struct interp_context *ctx)
 		ctx->details = strdup(detail->detail);
 		assert_ptr(ctx->details);
 	}
-
-	lre_exec_detail_release(detail);
 	return 0;
 }
 

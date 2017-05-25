@@ -5,9 +5,8 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
-#define DEFAULT_TOKEN_COUNT 		(1024)
 
 static struct symbol_word sym_words[] = {
 	[SYNTAX_SYM_RESERVED]             = { "",   SYM_TYPE_UNKNOWN },
@@ -43,9 +42,6 @@ static struct symbol_word sym_words[] = {
 	[SYNTAX_SYM_DIV_EQUAL]            = { "/=", SYM_TYPE_OPT_ARITH_ASSIGN },
 };
 
-static keystub_vec_t *root_kstub_vec = NULL;
-
-
 struct symbol_word *get_symbol_by_id(int sym)
 {
 	if(sym > SYNTAX_SYM_RESERVED && sym < SYNTAX_SYM_MAX) {
@@ -70,210 +66,77 @@ const char *get_symbol_str(int sym)
 	return NULL;
 }
 
+/*************************************************************/
 
-keystub_vec_t *get_root_keyvec(void)
+
+static void interp_load_code(struct interp *interp, const char *code)
 {
-	return root_kstub_vec;
-}
+	int len = strlen(code);
 
-static int keyword_stub_add(struct keyword_stub *keystub, 
-		struct keyword_stub *parent)
-{
-	keystub_vec_t *vec;
+	if(interp->codelen < len)
+		;
 
-	if(parent)
-		vec = parent->subvec;
-	else
-		vec = get_root_keyvec();
-
-	vector_set(vec, keystub);
-	return 0;
+	strncpy(interp->code, code, len);
+	interp->code[len] = '\0';
 }
 
 
-static struct keyword_stub *keyword_stub_create(int type, const char *keyword,
-	   	void *data)
+static void interp_context_init(struct interp *interp, struct interp_context *ctx)
 {
-	struct keyword_stub *keystub;
-
-	keystub = xzalloc(sizeof(*keystub));
-
-	keystub->type = type;
-	keystub->keyword = strdup(keyword);
-	assert_ptr(keystub->keyword);
-	keystub->data = data;
-
-	if(type == KEYSTUB_TYPE_FUNC || 
-			type == KEYSTUB_TYPE_CALL)
-		keystub->subvec = vector_init(0);
-
-	return keystub;
-}
-
-static void keyword_stub_destroy(struct keyword_stub *keystub)
-{
-	int i;
-	struct keyword_stub *substub;
-
-	free(keystub->keyword);
-
-	vector_foreach_active_slot(keystub->subvec, substub, i) {
-		if(!substub)
-			continue;
-		free(substub);
-	}
-	if(keystub->subvec)
-		vector_free(keystub->subvec);
-	free(keystub);
-}
-
-struct keyword_stub *keyword_install(int type, const char *keyword,
-	   	void *data, struct keyword_stub *parent)
-{
-	struct keyword_stub *keystub;
-
-	keystub = keyword_stub_create(type, keyword, data);
-	keystub->parent = parent;
-
-	keyword_stub_add(keystub, parent);
-	return keystub;
-}
-
-void keyword_uninstall(struct keyword_stub *keystub)
-{
-	keyword_stub_destroy(keystub);
-}
-
-
-struct keyword_stub *find_stub_by_keyword(keystub_vec_t *kwvec, 
-		const char *keyword)
-{
-	int i;
-	struct keyword_stub *keystub;
-
-	vector_foreach_active_slot(kwvec, keystub, i) {
-		if(!keystub || strcmp(keystub->keyword, keyword))
-			continue;
-
-		return keystub;
-	}
-
-	return NULL;
-}
-
-
-struct interp_context *interp_context_create(const char *code)
-{
-	struct interp_context *ctx;
-
-	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
-
-	ctx->code = strdup(code);
-	assert_ptr(ctx->code);
-	ctx->root = NULL;
-
-	ctx->wordbuf = xzalloc(CODE_MAX_LEN);
-	ctx->tokens = xzalloc(sizeof(struct lex_token) * DEFAULT_TOKEN_COUNT);
+	ctx->tokens = interp->stacks;
 	ctx->tokenidx = 0;
 	ctx->tokencnt = 0;
-	ctx->tokencap = DEFAULT_TOKEN_COUNT;
+	ctx->tokencap = interp->stacksize / sizeof(struct lex_token);
 
-	ctx->wordptr = ctx->wordbuf;
-	ctx->codeptr = (char *)ctx->code;
+	memset(interp->workbuf, 0, interp->bufsize);
+	ctx->wordptr = interp->workbuf;
+	ctx->codeptr = interp->code;
+
+	ctx->tree = NULL;
 
 	ctx->results = LRE_RESULT_UNKNOWN;
 	ctx->errcode = LRE_RET_OK;
 	ctx->details = NULL;
 
 	ctx->context = NULL;
+}
+
+struct interp_context *interp_context_create(struct interp *interp, const char *code)
+{
+	struct interp_context *ctx;
+
+	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
+	ctx->interp = interp;
+
+	interp_load_code(interp, code);
+	interp_context_init(interp, ctx);
 	return ctx;
 }
 
 int interp_context_reload_code(struct interp_context *ctx, const char *code)
 {
-	free(ctx->code);
-	ctx->code = strdup(code);
-	assert_ptr(ctx->code);
-
-	memset(ctx->wordbuf, 0, CODE_MAX_LEN);
-	memset(ctx->tokens, 0, sizeof(struct lex_token) * ctx->tokencap);
-	ctx->tokenidx = 0;
-	ctx->tokencnt = 0;
-
-	ctx->wordptr = ctx->wordbuf;
-	ctx->codeptr = (char *)ctx->code;
-
-	ctx->results = LRE_RESULT_UNKNOWN;
-	ctx->errcode = LRE_RET_OK;
-	ctx->details = NULL;
-
-	ctx->context = NULL;
+	interp_load_code(ctx->interp, code);
+	interp_context_init(ctx->interp, ctx);
 	return 0;
 }
 
 void interp_context_destroy(struct interp_context *ctx)
 {
-	free(ctx->code);
-	free(ctx->wordbuf);
-	free(ctx->tokens);
 	if(ctx->details)
 		free(ctx->details);
 
+	/*TODO: free syntax tree ctx->root */
 	free(ctx);
 }
 
-static char *keystub_type_str[] = {
-	[KEYSTUB_TYPE_UNKNOWN] = "unknown",
-	[KEYSTUB_TYPE_FUNC] = "func",
-	[KEYSTUB_TYPE_CALL] = "call",
-	[KEYSTUB_TYPE_ARG] = "arg",
-	[KEYSTUB_TYPE_EXPR] = "expr",
-	[KEYSTUB_TYPE_VAR] = "var",
-};
-
-#define dump_blank(l) do {int i; for(i=0; i<level; i++)printf("    "); }while(0)
-static void keyword_stub_dump(struct keyword_stub *keystub, int level)
-{
-	struct lrc_stub_base *base;
-
-	dump_blank(level);
-	printf("%s [%s]\n", keystub->keyword, keystub_type_str[keystub->type]);
-	dump_blank(level);
-	base = (struct lrc_stub_base *)keystub->data;
-	printf("\t%s\n", base->description);
-}
-
-static void keystub_vec_dump(keystub_vec_t *vec, int level)
-{
-	int i;
-	struct keyword_stub *keystub;
-
-	vector_foreach_active_slot(vec, keystub, i) {
-		if(!keystub)
-			continue;
-
-		keyword_stub_dump(keystub, level);
-		keystub_vec_dump(keystub->subvec, level + 1);
-	}
-	if((level % 2) != 0)
-		printf("\n");
-}
-
-void interpreter_dump(void)
-{
-	keystub_vec_t *vec;
-
-	vec = get_root_keyvec();
-	keystub_vec_dump(vec, 0);
-}
-
-int interpreter_execute(const char *code, struct lre_result *res)
+int interpreter_execute(struct interp *interp, 
+		const char *code, struct lre_result *res)
 {
 	int ret;
 	char *errstr;
 	struct interp_context *ctx;
 
-	ctx = interp_context_create(code);
+	ctx = interp_context_create(interp, code);
 
 repeat:
 	ret = interp_lexer_analysis(ctx);
@@ -330,20 +193,38 @@ err:
 	return ret;
 }
 
-int interpreter_init(void)
+struct interp *interpreter_create(void)
 {
-	root_kstub_vec = vector_init(0);
-	return 0;
-}
+	int ret;
+	struct interp *interp;
 
-void interpreter_release(void)
-{
-	int i;
-	struct keyword_stub *keystub;
+	interp = (struct interp *)xzalloc(sizeof(*interp));
+	interp->code = xzalloc(CODE_MAX_LEN);
+	interp->codelen = CODE_MAX_LEN;
 
-	vector_foreach_active_slot(root_kstub_vec, keystub, i) {
-		if(!keystub)
-			continue;
-		free(keystub);
+	interp->workbuf = xzalloc(CODE_MAX_LEN);
+	interp->bufsize = CODE_MAX_LEN;
+
+	interp->stacks = xzalloc(DEFAULT_STACK_SIZE);
+	interp->stacksize = DEFAULT_STACK_SIZE;
+
+	ret = mempool_init(&interp->syntax_mpool, sizeof(struct syntax_mpool_node), 128);
+	if(ret) {
+	
 	}
+
+	return interp;
 }
+
+void interpreter_destroy(struct interp *interp)
+{
+	mempool_release(&interp->syntax_mpool);
+
+	free(interp->code);
+	free(interp->workbuf);
+	free(interp->stacks);
+
+	free(interp);
+}
+
+

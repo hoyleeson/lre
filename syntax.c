@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <errno.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 
 enum expr_val_type {
@@ -31,22 +31,26 @@ enum expr_type {
 #define CHECK_BREAKET_GOTO(r, tag) 	CHECK_RET_GOTO(r, tag)
 
 
-static struct syntax_content *syntax_content_create(void)
+static struct syntax_content *syntax_content_create(struct interp_context *ctx)
 {
 	struct syntax_content *content;
+	struct interp *interp = ctx->interp;
 
-	content = (struct syntax_content *)xzalloc(sizeof(*content));
+	//content = (struct syntax_content *)xzalloc(sizeof(*content));
+	content = (struct syntax_content *)mem_alloc(&interp->syntax_mpool);
 
 	syntax_root_init(&content->childs);
 
 	return content;
 }
 
-static struct syntax_block *syntax_block_create(void)
+static struct syntax_block *syntax_block_create(struct interp_context *ctx)
 {
 	struct syntax_block *block;
+	struct interp *interp = ctx->interp;
 
-	block = (struct syntax_block *)xzalloc(sizeof(*block));
+	//block = (struct syntax_block *)xzalloc(sizeof(*block));
+	block = (struct syntax_block *)mem_alloc(&interp->syntax_mpool);
 
 	syntax_root_init(&block->childs);
 	syntax_node_init(&block->node, SYNTAX_NODE_TYPE_BLOCK);
@@ -55,13 +59,15 @@ static struct syntax_block *syntax_block_create(void)
 	return block;
 }
 
-static struct syntax_call *syntax_call_create(void)
+static struct syntax_call *syntax_call_create(struct interp_context *ctx)
 {
 	int i;
 	struct syntax_call *call;
 	struct syntax_args *args;
+	struct interp *interp = ctx->interp;
 
-	call = (struct syntax_call *)xzalloc(sizeof(*call));
+	//call = (struct syntax_call *)xzalloc(sizeof(*call));
+	call = (struct syntax_call *)mem_alloc(&interp->syntax_mpool);
 	syntax_node_init(&call->node, SYNTAX_NODE_TYPE_CALL);
 
 	args = &call->args;
@@ -72,13 +78,15 @@ static struct syntax_call *syntax_call_create(void)
 	return call;
 }
 
-static struct syntax_func *syntax_func_create(void)
+static struct syntax_func *syntax_func_create(struct interp_context *ctx)
 {
 	int i;
 	struct syntax_func *func;
 	struct syntax_args *args;
+	struct interp *interp = ctx->interp;
 
-	func = (struct syntax_func *)xzalloc(sizeof(*func));
+	//func = (struct syntax_func *)xzalloc(sizeof(*func));
+	func = (struct syntax_func *)mem_alloc(&interp->syntax_mpool);
 	syntax_root_init(&func->body.childs);
 	syntax_node_init(&func->node, SYNTAX_NODE_TYPE_FUNC);
 
@@ -90,32 +98,38 @@ static struct syntax_func *syntax_func_create(void)
 	return func;
 }
 
-static struct syntax_expr *syntax_expr_create(void)
+static struct syntax_expr *syntax_expr_create(struct interp_context *ctx)
 {
 	struct syntax_expr *expr;
+	struct interp *interp = ctx->interp;
 
-	expr = (struct syntax_expr *)xzalloc(sizeof(*expr));
+	//expr = (struct syntax_expr *)xzalloc(sizeof(*expr));
+	expr = (struct syntax_expr *)mem_alloc(&interp->syntax_mpool);
 	syntax_node_init(&expr->node, SYNTAX_NODE_TYPE_EXPR);
 	syntax_root_init(&expr->valchilds);
 
 	return expr;
 }
 
-static struct syntax_val *syntax_val_create(void)
+static struct syntax_val *syntax_val_create(struct interp_context *ctx)
 {
 	struct syntax_val *exprval;
+	struct interp *interp = ctx->interp;
 
-	exprval = (struct syntax_val *)xzalloc(sizeof(*exprval));
+	//exprval = (struct syntax_val *)xzalloc(sizeof(*exprval));
+	exprval = (struct syntax_val *)mem_alloc(&interp->syntax_mpool);
 	syntax_node_init(&exprval->node, SYNTAX_NODE_TYPE_VAL);
 
 	return exprval;
 }
 
-static struct syntax_valblock *syntax_valblock_create(void)
+static struct syntax_valblock *syntax_valblock_create(struct interp_context *ctx)
 {
 	struct syntax_valblock *exprvb;
+	struct interp *interp = ctx->interp;
 
-	exprvb = (struct syntax_valblock *)xzalloc(sizeof(*exprvb));
+	//exprvb = (struct syntax_valblock *)xzalloc(sizeof(*exprvb));
+	exprvb = (struct syntax_valblock *)mem_alloc(&interp->syntax_mpool);
 	syntax_root_init(&exprvb->childs);
 	syntax_node_init(&exprvb->node, SYNTAX_NODE_TYPE_VALBLOCK);
 
@@ -477,7 +491,7 @@ static int syntax_parse_val(struct interp_context *ctx,
 		case EXPR_VAL_TYPE_BLOCK:
 			/* '(' */
 			read_bracket(ctx);
-			exprvb = syntax_valblock_create();
+			exprvb = syntax_valblock_create(ctx);
 			syntax_parse_val(ctx, &exprvb->childs);
 			node = &exprvb->node;
 			/* ')' */
@@ -505,7 +519,7 @@ static int syntax_parse_val(struct interp_context *ctx,
 			val = read_keyword(ctx);
 			CHECK_KEYWORD_GOTO(val, err);
 
-			exprval = syntax_val_create();
+			exprval = syntax_val_create(ctx);
 			exprval->val = strdup(val);
 			assert_ptr(exprval->val);
 			exprval->isvar = isvar;
@@ -538,7 +552,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 	char *key;
 	struct syntax_expr *expr;
 
-	expr = syntax_expr_create();
+	expr = syntax_expr_create(ctx);
 
 	key = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(key, err);
@@ -663,7 +677,7 @@ static int syntax_parse_block(struct interp_context *ctx,
 	int ret;
 	struct syntax_block *block;
 
-	block = syntax_block_create();
+	block = syntax_block_create(ctx);
 
 	ret = __syntax_parse_block(ctx, &block->childs);
 	if(ret) {
@@ -759,7 +773,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 	struct syntax_call *call;
 	struct lex_token *token;
 
-	call = syntax_call_create();
+	call = syntax_call_create(ctx);
 
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
@@ -803,7 +817,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 	int bracket;
 	struct syntax_func *func;
 
-	func = syntax_func_create();
+	func = syntax_func_create(ctx);
 
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
@@ -864,14 +878,14 @@ static int syntax_parse_content(struct interp_context *ctx)
 	int ret;
 	struct syntax_content *content;
 
-	content = syntax_content_create();
+	content = syntax_content_create(ctx);
 
 	ret = __syntax_parse_block(ctx, &content->childs);
 	if(ret) {
 		loge("Syntax err: parse content err.");
 		return -EINVAL;
 	}
-	ctx->root = &content->childs;
+	ctx->tree = &content->childs;
 	return 0;
 }
 
@@ -879,7 +893,7 @@ int interp_syntax_parse(struct interp_context *ctx)
 {
 	int ret;
 
-	ctx->root = NULL;
+	ctx->tree = NULL;
 	ret = syntax_parse_content(ctx);
 
 	return ret;
@@ -1057,17 +1071,17 @@ static int dump_syntax_childs(struct syntax_root *root, int level, char *ptr)
 	return len;
 }
 
-void dump_syntax_tree(struct syntax_root *root)
+void dump_syntax_tree(struct syntax_root *tree)
 {
 	int level = 0;
 	int len;
 	char code[CODE_MAX_LEN] = {0};
 	struct syntax_content *content;
 
-	if(!root)
+	if(!tree)
 		return;
 
-	content = container_of(root, struct syntax_content, childs);
+	content = container_of(tree, struct syntax_content, childs);
 
 	len += dump_syntax_content(content, level, code);
 

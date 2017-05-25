@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "interpreter.h"
+#include "lre_internal.h"
 
 static char *conf_path = NULL;
 
