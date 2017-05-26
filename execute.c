@@ -9,35 +9,50 @@
 
 #define EXEC_STACK_GAP  	(64)
 
+#define EXEC_DETAIL_UNIT_MAX 	(64)
+void exec_output_cb(lrc_obj_t *handle, const char *str)
+{
+	int len;
+	int etc = 0;
+	struct interp_context *ctx;
 
-struct exec_context {
-	lrc_obj_t **stack;	
-	int index;
-	int depth;
+	ctx = (struct interp_context *)handle->context;
 
-	struct lre_exec_detail detail;
-};
+	if(ctx->detailen + EXEC_DETAIL_UNIT_MAX >= ctx->detailcap)
+		return;
+
+	len = strlen(str) + 1;
+	if(len > EXEC_DETAIL_UNIT_MAX) {
+		logw("lre push exec detail more than %d", EXEC_DETAIL_UNIT_MAX);
+		len = EXEC_DETAIL_UNIT_MAX - 4;
+		etc = 1;
+	}
+
+	ctx->detailen += snprintf(ctx->details + ctx->detailen, len, "%s", str);
+	ctx->detailen += sprintf(ctx->details + ctx->detailen, "%s, ", etc ? "...": "");
+}
 
 
-static inline int exec_ctx_push_handle(struct exec_context *ctx, 
+static inline int exec_ctx_push_handle(struct interp_context *ctx,
 		lrc_obj_t *handle)
 {
-	if(ctx->index + EXEC_STACK_GAP >= ctx->depth)
+	if(ctx->stackidx + EXEC_STACK_GAP >= ctx->stackdepth)
 		return -EINVAL;
 
-	ctx->stack[ctx->index++] = handle;
-	handle->detail = &ctx->detail;
-	return ctx->index - 1;
+	ctx->stack[ctx->stackidx++] = handle;
+	handle->context = ctx;
+	handle->output = exec_output_cb;
+	return ctx->stackidx - 1;
 }
 
-static inline lrc_obj_t *exec_ctx_pop_handle(struct exec_context *ctx)
+static inline lrc_obj_t *exec_ctx_pop_handle(struct interp_context *ctx)
 {
-	return ctx->stack[--ctx->index];
+	return ctx->stack[--ctx->stackidx];
 }
 
-static inline lrc_obj_t *exec_ctx_get_handle(struct exec_context *ctx)
+static inline lrc_obj_t *exec_ctx_get_handle(struct interp_context *ctx)
 {
-	return ctx->stack[ctx->index - 1];
+	return ctx->stack[ctx->stackidx - 1];
 }
 
 
@@ -82,12 +97,13 @@ static int val2lre_value(char *val, struct lre_value *arg)
 	return 0;
 }
 
-static int execute_syntax_childs(struct syntax_root *root, struct exec_context *ctx);
-static int execute_syntax_call(struct syntax_call *call, 
-		struct exec_context *ctx, struct lre_value *arg);
+static int execute_syntax_childs(struct interp_context *ctx,
+		struct syntax_root *root);
+static int execute_syntax_call(struct interp_context *ctx,
+		struct syntax_call *call, struct lre_value *arg);
 
-static int execute_syntax_val(struct syntax_root *root, 
-		struct exec_context *ctx, struct lre_value *arg)
+static int execute_syntax_val(struct interp_context *ctx, 
+		struct syntax_root *root, struct lre_value *arg)
 {
 	int ret = 0;
 	struct syntax_node *node;
@@ -125,13 +141,13 @@ static int execute_syntax_val(struct syntax_root *root,
 				break;
 			case SYNTAX_NODE_TYPE_VALBLOCK:	
 				exprvb = container_of(node, struct syntax_valblock, node);
-				ret = execute_syntax_val(&exprvb->childs, ctx, &tmparg);
+				ret = execute_syntax_val(ctx, &exprvb->childs, &tmparg);
 				if(ret)
 					goto out;
 				break;
 			case SYNTAX_NODE_TYPE_CALL:
 				exprvcall = container_of(node, struct syntax_call, node);
-				ret = execute_syntax_call(exprvcall, ctx, &tmparg);
+				ret = execute_syntax_call(ctx, exprvcall, &tmparg);
 				if(ret)
 					goto out;
 
@@ -170,7 +186,8 @@ out:
 	return -EINVAL;
 }
 
-static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ctx)
+static int execute_syntax_expr(struct interp_context *ctx, 
+		struct syntax_expr *expr)
 {
 	int ret;
 	struct keyword_stub *estub;
@@ -185,7 +202,7 @@ static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ct
 
 	logv("Execute expr '%s'.", estub->keyword);
 	arg.type = LRE_ARG_TYPE_UNKNOWN;
-	ret = execute_syntax_val(&expr->valchilds, ctx, &arg);
+	ret = execute_syntax_val(ctx, &expr->valchilds, &arg);
 	if(ret) {
 		loge("Execute err: expr '%s' to lre_value err.", estub->keyword);
 		return RET_DEAD_VAL;
@@ -201,8 +218,8 @@ static int execute_syntax_expr(struct syntax_expr *expr, struct exec_context *ct
 	return ret;
 }
 
-static int execute_syntax_func(struct syntax_func *func, 
-		struct exec_context *ctx)
+static int execute_syntax_func(struct interp_context *ctx, 
+		struct syntax_func *func)
 {
 	int ret;
 	struct keyword_stub *fstub;
@@ -234,7 +251,7 @@ static int execute_syntax_func(struct syntax_func *func,
 			stubarg = (struct lrc_stub_arg *)astub->data;
 
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
-			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
+			ret = execute_syntax_val(ctx, &args->args[i].valchilds, &arg);
 			if(ret) {
 				loge("Execute err: func arg '%s' to lre_value err.", astub->keyword);
 				ret = RET_DEAD_VAL;
@@ -260,7 +277,7 @@ static int execute_syntax_func(struct syntax_func *func,
 		}
 	}
 
-	ret = execute_syntax_childs(&func->body.childs, ctx);
+	ret = execute_syntax_childs(ctx, &func->body.childs);
 
 out:
 	if(stubfunc->destructor)
@@ -271,8 +288,8 @@ out:
 	return ret;
 }
 
-static int execute_syntax_call(struct syntax_call *call, 
-		struct exec_context *ctx, struct lre_value *arg)
+static int execute_syntax_call(struct interp_context *ctx,
+		struct syntax_call *call, struct lre_value *arg)
 {
 	int ret;
 	struct keyword_stub *cstub;
@@ -304,7 +321,7 @@ static int execute_syntax_call(struct syntax_call *call,
 			stubarg = (struct lrc_stub_arg *)astub->data;
 
 			arg.type = LRE_ARG_TYPE_UNKNOWN;
-			ret = execute_syntax_val(&args->args[i].valchilds, ctx, &arg);
+			ret = execute_syntax_val(ctx, &args->args[i].valchilds, &arg);
 			if(ret) {
 				loge("Execute err: call arg '%s' to lre_vaule err.", astub->keyword);
 				return ret;
@@ -343,27 +360,27 @@ out:
 	return ret;
 }
 
-static int execute_syntax_block(struct syntax_block *block,
-	   	struct exec_context *ctx)
+static int execute_syntax_block(struct interp_context *ctx, 
+		struct syntax_block *block)
 {
 	int ret;
 
-	ret = execute_syntax_childs(&block->childs, ctx);
+	ret = execute_syntax_childs(ctx, &block->childs);
 
 	if(block->negative)
 		ret = !ret;
 	return ret;
 }
 
-static int execute_syntax_content(struct syntax_content *content,
-	   	struct exec_context *ctx)
+static int execute_syntax_content(struct interp_context *ctx, 
+		struct syntax_content *content)
 {
-	return execute_syntax_childs(&content->childs, ctx);
+	return execute_syntax_childs(ctx, &content->childs);
 }
 
 
-static int execute_syntax_childs(struct syntax_root *root,
-	   	struct exec_context *ctx)
+static int execute_syntax_childs(struct interp_context *ctx, 
+		struct syntax_root *root)
 {
 	int ret;
 	struct syntax_func *func;
@@ -377,15 +394,15 @@ static int execute_syntax_childs(struct syntax_root *root,
 		switch(node->type) {
 			case SYNTAX_NODE_TYPE_FUNC:	
 				func = container_of(node, struct syntax_func, node);
-				ret = execute_syntax_func(func, ctx);
+				ret = execute_syntax_func(ctx, func);
 				break;
 			case SYNTAX_NODE_TYPE_EXPR:	
 				expr = container_of(node, struct syntax_expr, node);
-				ret = execute_syntax_expr(expr, ctx);
+				ret = execute_syntax_expr(ctx, expr);
 				break;
 			case SYNTAX_NODE_TYPE_BLOCK:	
 				block = container_of(node, struct syntax_block, node);
-				ret = execute_syntax_block(block, ctx);
+				ret = execute_syntax_block(ctx, block);
 				break;
 			default:
 				ret = RET_DEAD_VAL;
@@ -418,8 +435,8 @@ static int execute_syntax_childs(struct syntax_root *root,
 	return res;
 }
 
-static int execute_syntax_tree(struct syntax_root *root, 
-		struct exec_context *ctx)
+static int execute_syntax_tree(struct interp_context *ctx,
+		struct syntax_root *root)
 {
 	struct syntax_content *content;
 
@@ -428,43 +445,25 @@ static int execute_syntax_tree(struct syntax_root *root,
 
 	content = container_of(root, struct syntax_content, childs);
 
-	return execute_syntax_content(content, ctx);
+	return execute_syntax_content(ctx, content);
 }
 
 
 int interp_execute(struct interp_context *ctx)
 {
 	int ret;
-	struct exec_context exec_ctx;
-	struct lre_exec_detail *detail;
 	struct interp *interp = ctx->interp;
 
-	exec_ctx.stack = interp->stacks;
-	exec_ctx.index = 0;
-	exec_ctx.depth = interp->stacksize;
+	ctx->stack = interp->stacks;
+	ctx->stackidx = 0;
+	ctx->stackdepth = interp->stacksize;
 
-	detail = &exec_ctx.detail;
-
-	detail->detail = interp->workbuf;
-	detail->len = 0;
-	detail->cap = interp->bufsize;
-	memset(detail->detail, 0, detail->cap);
-
-	logd("Start execute rules.");
-	ret = execute_syntax_tree(ctx->tree, &exec_ctx);
-	if(vaild_lre_results(ret)) {
-		ctx->results = ret;
-		ctx->errcode = LRE_RET_OK;
-	} else {
-		loge("Execute error, unexpect result:%d", ret);
-		ctx->results = LRE_RESULT_UNKNOWN;
-		ctx->errcode = ret;
+	logd("Execute: Start exec rules.");
+	ret = execute_syntax_tree(ctx, ctx->tree);
+	if(ctx->stackidx > 0) {
+		loge("Execute err: exec rules interrupted.(%d)", ret);
 	}
 
-	if(detail->len > 0) {
-		ctx->details = strdup(detail->detail);
-		assert_ptr(ctx->details);
-	}
-	return 0;
+	return ret;
 }
 

@@ -120,7 +120,7 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(!ret) {
 		char buf[128] = {0};
 		snprintf(buf, 128, "file '%s'%s exist", file->path, file->exist ? "":" not");
-		lre_push_exec_detail(handle, buf);
+		file->base.output(handle, buf);
 	}
 	return ret;
 }

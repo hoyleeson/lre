@@ -16,14 +16,14 @@ extern "C" {
 
 struct lre_context;
 struct lre_value;
-struct lre_exec_detail;
 
 struct lrc_object {
 	int type;
 #define LRC_OBJECT_FUNC 		(0)
 #define LRC_OBJECT_CALL 		(1)
 
-	struct lre_exec_detail *detail;
+	void *context;
+	void (*output)(struct lrc_object *, const char *);
 };
 
 typedef struct lrc_object lrc_obj_t;
@@ -77,8 +77,6 @@ int lre_value_is_string(struct lre_value *val);
 int lre_compare_int(int a, int b, int op);
 int lre_compare_double(double a, double b, int op);
 int lre_compare_string(char *a, char *b, int op);
-
-int lre_push_exec_detail(struct lrc_object *obj, const char *str);
 
 
 /***********************************************************/

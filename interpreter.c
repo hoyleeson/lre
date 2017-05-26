@@ -68,69 +68,76 @@ const char *get_symbol_str(int sym)
 
 /*************************************************************/
 
-
 static void interp_load_code(struct interp *interp, const char *code)
 {
 	int len = strlen(code);
 
-	if(interp->codelen < len)
+	if(interp->cbufsize < len)
 		;
 
-	strncpy(interp->code, code, len);
-	interp->code[len] = '\0';
+	strncpy(interp->codebuf, code, len);
 }
-
 
 static void interp_context_init(struct interp *interp, struct interp_context *ctx)
 {
-	ctx->tokens = interp->stacks;
-	ctx->tokenidx = 0;
-	ctx->tokencnt = 0;
-	ctx->tokencap = interp->stacksize / sizeof(struct lex_token);
-
-	memset(interp->workbuf, 0, interp->bufsize);
-	ctx->wordptr = interp->workbuf;
-	ctx->codeptr = interp->code;
-
 	ctx->tree = NULL;
 
-	ctx->results = LRE_RESULT_UNKNOWN;
-	ctx->errcode = LRE_RET_OK;
-	ctx->details = NULL;
+	/* Use for Lexer */
+	ctx->codeptr = interp->codebuf;
+	ctx->wordptr = interp->workmem;
+
+	/* Use for Lexer and Syntax parser */
+	ctx->tokens = NULL;
+	ctx->tokenidx = 0;
+	ctx->tokencnt = 0;
+	ctx->tokencap = 0;
+
+	/* Use for Executor */
+	ctx->stack = NULL;
+	ctx->stackidx = 0;
+	ctx->stackdepth = 0;
+
+	ctx->details = interp->outbuf;
+	ctx->detailen = 0;
+	ctx->detailcap = interp->obufsize;
 
 	ctx->context = NULL;
+
+	memset(interp->codebuf, 0, interp->cbufsize);
+	memset(interp->workmem, 0, interp->wmemsize);
+	memset(interp->stacks, 0, interp->stacksize);
+	memset(interp->outbuf, 0, interp->obufsize);
 }
 
-struct interp_context *interp_context_create(struct interp *interp, const char *code)
+struct interp_context *interp_context_create(struct interp *interp,
+	   	const char *code)
 {
 	struct interp_context *ctx;
 
 	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
 	ctx->interp = interp;
 
-	interp_load_code(interp, code);
 	interp_context_init(interp, ctx);
+	interp_load_code(interp, code);
 	return ctx;
 }
 
-int interp_context_reload_code(struct interp_context *ctx, const char *code)
+int interp_context_reload_code(struct interp_context *ctx,
+	   	const char *code)
 {
-	interp_load_code(ctx->interp, code);
 	interp_context_init(ctx->interp, ctx);
+	interp_load_code(ctx->interp, code);
 	return 0;
 }
 
 void interp_context_destroy(struct interp_context *ctx)
 {
-	if(ctx->details)
-		free(ctx->details);
-
 	/*TODO: free syntax tree ctx->root */
 	free(ctx);
 }
 
 int interpreter_execute(struct interp *interp, 
-		const char *code, struct lre_result *res)
+		const char *code)
 {
 	int ret;
 	char *errstr;
@@ -146,7 +153,7 @@ repeat:
 	}
 
 	interp_context_refresh(ctx);
-	/*	dump_lex_tokens(ctx); */
+	/* dump_lex_tokens(ctx); */
 
 	ret = interp_preprocess(ctx);
 	if(ret == PREPROCESS_RES_REPEAT)
@@ -163,7 +170,7 @@ repeat:
 	}
 
 	interp_context_refresh(ctx);
-	/*	dump_syntax_tree(ctx->root); */
+	/*	dump_syntax_tree(ctx); */
 	ret = interp_semantic_analysis(ctx);
 	if(ret) {
 		errstr = "Interpreter err: semantic analysis error.";
@@ -171,24 +178,22 @@ repeat:
 	}
 
 	ret = interp_execute(ctx);
-	if(ret) {
-		errstr = "Interpreter err: exec error.";
+	if(!vaild_lre_results(ret)) {
+		errstr = "Interpreter err, execute error.";
 		goto err;
 	}
 
-	res->result = interp_get_exec_results(ctx);
-	res->errcode = interp_get_exec_errcode(ctx);
-	res->details = (char*)interp_get_exec_details(ctx);
-	ctx->details = NULL;
-	
+	interp->results = ret;
+	interp->errcode = LRE_RET_OK;
+
+	loge("Interp execute success, result:%d", ret);
 	interp_context_destroy(ctx);
 	return 0;
 
 err:
-	res->result = LRE_RESULT_UNKNOWN;
-	res->errcode = ret;
-	res->details = strdup(errstr);
-	assert_ptr(res->details);
+	interp->results = LRE_RESULT_UNKNOWN;
+	interp->errcode = ret;
+	loge("%s, unexpect result: %d", errstr, ret);
 	interp_context_destroy(ctx);
 	return ret;
 }
@@ -199,14 +204,17 @@ struct interp *interpreter_create(void)
 	struct interp *interp;
 
 	interp = (struct interp *)xzalloc(sizeof(*interp));
-	interp->code = xzalloc(CODE_MAX_LEN);
-	interp->codelen = CODE_MAX_LEN;
+	interp->codebuf = xzalloc(DEFAULT_CODEBUF_SIZE);
+	interp->cbufsize = DEFAULT_CODEBUF_SIZE;
 
-	interp->workbuf = xzalloc(CODE_MAX_LEN);
-	interp->bufsize = CODE_MAX_LEN;
+	interp->workmem = xzalloc(DEFAULT_WORKMEM_SIZE);
+	interp->wmemsize = DEFAULT_WORKMEM_SIZE;
 
-	interp->stacks = xzalloc(DEFAULT_STACK_SIZE);
-	interp->stacksize = DEFAULT_STACK_SIZE;
+	interp->stacks = xzalloc(DEFAULT_STACKS_SIZE);
+	interp->stacksize = DEFAULT_STACKS_SIZE;
+
+	interp->outbuf = xzalloc(DEFAULT_OUTBUF_SIZE);
+	interp->obufsize = DEFAULT_OUTBUF_SIZE;
 
 	ret = mempool_init(&interp->syntax_mpool, sizeof(struct syntax_mpool_node), 128);
 	if(ret) {
@@ -220,9 +228,10 @@ void interpreter_destroy(struct interp *interp)
 {
 	mempool_release(&interp->syntax_mpool);
 
-	free(interp->code);
-	free(interp->workbuf);
+	free(interp->codebuf);
+	free(interp->workmem);
 	free(interp->stacks);
+	free(interp->outbuf);
 
 	free(interp);
 }

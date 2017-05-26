@@ -227,29 +227,6 @@ static void lrc_call_unregister(struct lrc_stub_call *call)
 }
 
 
-#define EXEC_DETAIL_UNIT_MAX 	(64)
-
-int lre_push_exec_detail(struct lrc_object *obj, const char *str)
-{
-	int len;
-	int etc = 0;
-	struct lre_exec_detail *detail = obj->detail;
-
-	if(detail->len + EXEC_DETAIL_UNIT_MAX >= detail->cap)
-		return -ENOMEM;
-
-	len = strlen(str) + 1;
-	if(len > EXEC_DETAIL_UNIT_MAX) {
-		logw("lre push exec detail more than %d", EXEC_DETAIL_UNIT_MAX);
-		len = EXEC_DETAIL_UNIT_MAX - 4;
-		etc = 1;
-	}
-
-	detail->len += snprintf(detail->detail + detail->len, len, "%s", str);
-	detail->len += sprintf(detail->detail + detail->len, "%s, ", etc ? "...": "");
-	return 0;
-}
-
 #define CHECK_ERR(ret, tag)    do { if(ret) goto tag; } while(0)
 int lrc_module_register(struct lrc_module *module)
 {
@@ -304,11 +281,19 @@ void lrc_module_unregister(struct lrc_module *module)
 struct lre_result *lre_execute(struct lre_context *ctx, const char *code)
 {
 	int ret;
+	struct lre_result *res;
+	struct interp *interp;
 
-	ret = interpreter_execute(ctx->interp, code, &ctx->res);
+	res = &ctx->res;
+	interp = ctx->interp;
+
+	ret = interpreter_execute(interp, code);
 	if(ret) {
 		loge("Error: Failed to interpret code:\n\t%s.", code);	
 	}
+	res->result = interp_get_result(interp);
+	res->errcode = interp_get_errcode(interp);
+	res->details = interp_get_output(interp);
 	
 	return &ctx->res;
 }

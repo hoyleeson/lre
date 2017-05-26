@@ -520,8 +520,7 @@ static int syntax_parse_val(struct interp_context *ctx,
 			CHECK_KEYWORD_GOTO(val, err);
 
 			exprval = syntax_val_create(ctx);
-			exprval->val = strdup(val);
-			assert_ptr(exprval->val);
+			exprval->val = val;
 			exprval->isvar = isvar;
 			node = &exprval->node;
 			break;
@@ -556,8 +555,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 
 	key = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(key, err);
-	expr->key = strdup(key);
-	assert_ptr(expr->key);
+	expr->key = key;
 	logv("Syntax: parse expr '%s'", expr->key);
 
 	opt = read_operator(ctx);
@@ -711,8 +709,7 @@ static int syntax_parse_func_args(struct interp_context *ctx,
 	for(i=0; i < SYNTAX_ARG_MAX; i++) {
 		argkey = read_keyword(ctx);
 		CHECK_KEYWORD_GOTO(argkey, err);
-		args->args[i].key = strdup(argkey);
-		assert_ptr(args->args[i].key);
+		args->args[i].key = argkey;
 		logd("Syntax: parse args '%s'", args->args[i].key);
 
 		opt = read_operator(ctx);
@@ -777,8 +774,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
-	call->keyword = strdup(keyword);
-	assert_ptr(call->keyword);
+	call->keyword = keyword;
 
 	logv("Syntax: parse call '%s'", call->keyword);
 	bracket = read_bracket(ctx);
@@ -821,8 +817,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 
 	keyword = read_keyword(ctx);
 	CHECK_KEYWORD_GOTO(keyword, err);
-	func->keyword = strdup(keyword);
-	assert_ptr(func->keyword);
+	func->keyword = keyword;
 	logv("Syntax: parse func '%s'", func->keyword);
 
 	bracket = read_bracket(ctx);
@@ -1071,23 +1066,27 @@ static int dump_syntax_childs(struct syntax_root *root, int level, char *ptr)
 	return len;
 }
 
-void dump_syntax_tree(struct syntax_root *tree)
+void dump_syntax_tree(struct interp_context *ctx)
 {
 	int level = 0;
 	int len;
-	char code[CODE_MAX_LEN] = {0};
+	char *buf;
 	struct syntax_content *content;
+	struct syntax_root *tree = ctx->tree;
+	struct interp *interp = ctx->interp;
 
 	if(!tree)
 		return;
 
+	buf = xzalloc(interp->cbufsize);
 	content = container_of(tree, struct syntax_content, childs);
 
-	len += dump_syntax_content(content, level, code);
+	len += dump_syntax_content(content, level, buf);
 
 	printf("\n-------------------------------------------\n");
-	printf("%s\n", code);
+	printf("%s\n", buf);
 	printf("\n-------------------------------------------\n");
+	free(buf);
 }
 
 

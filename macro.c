@@ -91,7 +91,7 @@ char *lre_create_code_by_macro(struct lre_macro *macro,
 	int len = 0;
 	char *ptr;
 	int idx;
-	char code[CODE_MAX_LEN] = {0};
+	char code[DEFAULT_CODEBUF_SIZE] = {0};
 
 	if(macro->argc != argc)
 		return NULL;
@@ -99,11 +99,11 @@ char *lre_create_code_by_macro(struct lre_macro *macro,
 	for(i=0; i<macro->tokencnt; i++) {
 		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD) {
 			ptr = macro->token[i].wordptr;
-			len += snprintf(code + len, CODE_MAX_LEN - len, "%s",
+			len += snprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s",
 					ptr);
 		} else if(macro->token[i].type == MACRO_TOKEN_TYPE_ARG) {
 			idx = macro->token[i].argindex;
-			len += snprintf(code + len, CODE_MAX_LEN - len, "%s", 
+			len += snprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s", 
 					args[idx]);
 		}
 	}
@@ -270,11 +270,10 @@ static int lre_macro_parse(struct interp_context *ctx)
 	char *ptr;
 	struct lex_token *token;
 	struct lre_macro *macro;
-	struct interp *interp = ctx->interp;
 
 	macro = xzalloc(sizeof(*macro));
 
-	macro->macro = strdup(interp->code);
+	macro->macro = strdup(ctx->codeptr);
 	assert_ptr(macro->macro);
 
 	token = read_token(ctx);
@@ -417,9 +416,9 @@ static int lre_macro_conf_load(const char *fpath)
         return 0;
     }
 	
-	buf = xzalloc(CODE_MAX_LEN * 2);
+	buf = xzalloc(DEFAULT_CODEBUF_SIZE * 2);
 
-	while((len = read_macro_line(buf, CODE_MAX_LEN, confp, _FLAGS_NEWLINE)) > 0) {
+	while((len = read_macro_line(buf, DEFAULT_CODEBUF_SIZE, confp, _FLAGS_NEWLINE)) > 0) {
 		logd("MACRO: '%s', len:%d", buf, len);
 		lre_macro_conf_parse(buf);
 	}

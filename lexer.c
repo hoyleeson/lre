@@ -240,17 +240,6 @@ done:
 	return res;
 }
 
-/* FIXME: token expand */
-static int lexer_token_expands(struct interp_context *ctx)
-{
-	ctx->tokencap *= 2;
-	ctx->tokens = realloc(ctx->tokens, sizeof(struct lex_token) * ctx->tokencap);
-	if(!ctx->tokens)
-		return -EINVAL;
-	logi("Lexer: expands lex token stack.");
-	return 0;
-}
-
 static int lexer_read_token(struct interp_context *ctx)
 {
 	int ret;
@@ -267,9 +256,9 @@ static int lexer_read_token(struct interp_context *ctx)
 			loge("Lexer err: get next token failed.");
 			return -EINVAL;
 		}
-		if(ctx->tokencnt >= ctx->tokencap && 
-				lexer_token_expands(ctx)) {
-			loge("Lexer err: expands lex token stack error.");
+		/* TODO: expands stack */
+		if(ctx->tokencnt >= ctx->tokencap) {
+			loge("Lexer err: lex token stack flow.");
 			return -EINVAL;
 		}
 	}
@@ -279,6 +268,15 @@ static int lexer_read_token(struct interp_context *ctx)
 int interp_lexer_analysis(struct interp_context *ctx)
 {
 	int ret;
+	struct interp *interp;
+
+	interp = ctx->interp;
+
+	/* Stage 1. Initialize the lexer context. */
+	ctx->tokens = interp->stacks;
+	ctx->tokenidx = 0;
+	ctx->tokencnt = 0;
+	ctx->tokencap = interp->stacksize / sizeof(struct lex_token);
 
 	ret = lexer_read_token(ctx);
 	return ret;
@@ -290,15 +288,15 @@ void dump_lex_tokens(struct interp_context *ctx)
 	int i;
 	struct lex_token *token;
 	int len = 0;
-	char data[CODE_MAX_LEN] = {0};
+	char *buf;
+	struct interp *interp = ctx->interp;
 
-	if(!ctx)
-		return;
+	buf = xzalloc(interp->cbufsize);
 
 	for(i = ctx->tokenidx; i < ctx->tokencnt; i++) {
 		token = &ctx->tokens[i];
 
-		len += sprintf(data + len, "%s", token->word);
+		len += sprintf(buf + len, "%s", token->word);
 		printf("token word:%s \ttype:%d \tsubtype:%d",
 			   	token->word, token->type, token->subtype);
 		if(token->type == TOKEN_TYPE_SYMBOL)
@@ -308,7 +306,7 @@ void dump_lex_tokens(struct interp_context *ctx)
 	}
 
 	printf("---------------------------------------\n");
-	printf("%s\n", data);
+	printf("%s\n", buf);
 	printf("---------------------------------------\n");
 }
 

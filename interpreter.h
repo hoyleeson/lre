@@ -11,8 +11,15 @@
 #include "log.h"
 #include "mempool.h"
 
+
+#define DEFAULT_CODEBUF_SIZE 	(4096)
+#define DEFAULT_WORKMEM_SIZE 	(4096)
+#define DEFAULT_STACKS_SIZE 	(8192)
+#define DEFAULT_OUTBUF_SIZE 	(4096)
+
+
 #define SYNTAX_CODE_EOF 	(0xffff)
-#define CODE_MAX_LEN 		(4096)
+
 
 #define RET_DEAD_VAL 		LRE_RESULT_UNKNOWN
 
@@ -234,15 +241,15 @@ struct lex_token {
 #define DEFAULT_STACK_SIZE 		(16*1024)
 
 struct interp {
-	char *code;
-	int codelen;
+	/* cache code to be interpreted */
+	char *codebuf;
+	int cbufsize;
 
 	/* 
-	 * Lex/Syntax stage: save the code fragment.
-	 * Execute stage: execute details infomation.
+	 * Hold the code fragment.
 	 * */
-	char *workbuf;
-	int bufsize;
+	char *workmem;
+	int wmemsize;
 
 	/* 
 	 * Lex/Syntax stage: save struct lex_token ptr;
@@ -251,40 +258,41 @@ struct interp {
 	void *stacks;
 	int stacksize;
 
+	/* Execute results or errcode (Similar to registers) */
+	int results; /* Logic operation results (true or false) */
+	int errcode;  /* Program execute return (success or failed code) */
+
+	/* Save interpreter output details infomation */
+	void *outbuf;
+	int obufsize;
+
 	struct mempool syntax_mpool;
-};
-
-struct lex_tokens {
-	struct lex_token *tokens;
-	int tokenidx;
-	int tokencnt;
-	int tokencap;
-};
-
-struct exec_stacks {
-	lrc_obj_t *stack;	
-	int index;
-	int depth;
 };
 
 struct interp_context {
 	struct interp *interp;
 
+	/* syntax tree */
+	struct syntax_root *tree;
+
+	/* Use for Lexer */
+	char *codeptr;
+	char *wordptr;
+
+	/* Use for Lexer and Syntax parser */
 	struct lex_token *tokens;
 	int tokenidx;
 	int tokencnt;
 	int tokencap;
 
-	char *codeptr;
-	char *wordptr;
+	/* Use for Executor */
+	lrc_obj_t **stack;
+	int stackidx;
+	int stackdepth;
 
-	/* syntax tree */
-	struct syntax_root *tree;
-
-	/* Execute results return and details */
-	int results; /* Logic operation results (true or false) */
-	int errcode;  /* Program execute return (success or failed code) */
 	char *details;  /* Execute detail infomation (description string) */
+	int detailen;
+	int detailcap;
 
 	void *context;
 };
@@ -301,7 +309,6 @@ static inline void syntax_node_init(struct syntax_node *node, int type)
 	node->type = type;
 }
 
-
 static inline void syntax_add(struct syntax_node *node, struct syntax_root *root)
 {
 	list_add_tail(&node->entry, &root->head);
@@ -317,27 +324,6 @@ static inline void lex_token_init(struct lex_token *token)
 	token->type = TOKEN_TYPE_UNKNOWN;
 	token->subtype = 0;
 	token->symbol = 0;
-}
-
-static inline void interp_context_refresh(struct interp_context *ctx)
-{
-	/* reset token idx */
-	ctx->tokenidx = 0;
-}
-
-static inline int interp_get_exec_results(struct interp_context *ctx)
-{
-	return ctx->results;
-}
-
-static inline int interp_get_exec_errcode(struct interp_context *ctx)
-{
-	return ctx->errcode;
-}
-
-static inline const char *interp_get_exec_details(struct interp_context *ctx)
-{
-	return ctx->details;
 }
 
 static inline struct lex_token *peek_curr_token(struct interp_context *ctx)
@@ -373,7 +359,15 @@ static inline struct lex_token *read_token(struct interp_context *ctx)
 	return NULL;
 }
 
-void dump_syntax_tree(struct syntax_root *root);
+static inline void interp_context_refresh(struct interp_context *ctx)
+{
+	/* reset token idx */
+	ctx->tokenidx = 0;
+	ctx->codeptr = ctx->interp->codebuf;
+}
+
+
+void dump_syntax_tree(struct interp_context *ctx);
 void dump_lex_tokens(struct interp_context *ctx);
 
 #define PREPROCESS_RES_REPEAT 		(1)
@@ -392,7 +386,20 @@ struct interp_context *interp_context_create(struct interp *interp, const char *
 int interp_context_reload_code(struct interp_context *ctx, const char *code);
 void interp_context_destroy(struct interp_context *ctx);
 
-int interpreter_execute(struct interp *interp, const char *code, struct lre_result *res);
+static inline int interp_get_result(struct interp *interp)
+{
+	return interp->results;
+}
+static inline int interp_get_errcode(struct interp *interp)
+{
+	return interp->errcode;
+}
+static inline char *interp_get_output(struct interp *interp)
+{
+	return interp->outbuf;
+}
+
+int interpreter_execute(struct interp *interp, const char *code);
 
 struct interp *interpreter_create(void);
 void interpreter_destroy(struct interp *interp);
