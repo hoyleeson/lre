@@ -179,11 +179,25 @@ struct lrc_network {
 
 static int network_execute(lrc_obj_t *handle)
 {
+	struct lrc_network *network;
+
+	network = (struct lrc_network *)handle;
+
 	if(net_initialized == 0) {
 		net_initialized = 1;
 		network_info_load();
 	}
 
+	{
+		int len;
+		char buf[64] = {0};
+		len = snprintf(buf, 64, "network");
+		if(strlen(network->protocol) > 0)
+			len += snprintf(buf + len, 64 - len, "protocol:%s", network->protocol);
+		if(network->port != INVAILD_PORT)
+			len += snprintf(buf + len, 64 - len, "port:%d", network->port);
+		network->base.output(handle, buf);
+	}
 	return 0;
 }
 
@@ -256,6 +270,7 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 	uint32_t listen_flags = 0;
 	int val;
 	int exist = 0;
+	int ret;
 
 	network = (struct lrc_network *)handle;
 
@@ -290,9 +305,13 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 
 	val = lre_value_get_int(lreval);
 	/*FIXME: verify val first */
-	lre_compare_int(val, exist, opt);
-
-	return LRE_RESULT_TRUE;
+	ret = lre_compare_int(val, exist, opt);
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "%slistening.", exist ? "":"not ");
+		network->base.output(handle, buf);
+	}
+	return ret;
 }
 
 

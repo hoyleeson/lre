@@ -53,6 +53,7 @@ void lre_context_destroy(struct lre_context *ctx);
 
 struct lre_result *lre_execute(struct lre_context *ctx, const char *code);
 
+void lre_help(void);
 
 /******************** lre utils ****************************/
 

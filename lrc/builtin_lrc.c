@@ -11,7 +11,7 @@ int lrc_builtin_init(void)
 	int ret;
 #define CHECK_ERR(ret, desc) \
 	do {if(ret) { \
-		loge("Failed to init lrc %s.(%d)", desc, __LINE__); \
+		loge("Builtin_lrc: Failed to init lrc %s.(%d)", desc, __LINE__); \
 		goto err; \
 	}} while(0)
 
@@ -28,7 +28,7 @@ int lrc_builtin_init(void)
 	CHECK_ERR(ret, "splicepath");
 
 
-	logi("Logic rule component initialize success");
+	logi("Builtin_lrc: Logic rule component initialize success");
 	return 0;
 err:
 	return -EINVAL;

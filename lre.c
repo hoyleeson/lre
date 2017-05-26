@@ -364,3 +364,9 @@ void lre_release(void)
 	logi("Logic rule engine released.");
 }
 
+void lre_help(void)
+{
+	printf("----------------------------------------------------\n");
+	lre_keyword_dump();
+	printf("----------------------------------------------------\n");
+}

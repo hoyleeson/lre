@@ -56,6 +56,21 @@ static int file_execute(lrc_obj_t *handle)
 		file->permission = -1;
 	}
 	file->state = STATE_EXEC_SUCCESS;
+
+	{
+		char *p;
+		int omit = 0;
+		char buf[64] = {0};
+		int len = strlen(file->path);
+		if(len > 32) {
+			omit = 1;
+			p = file->path + len - 32;
+		} else
+			p = file->path;	
+
+		snprintf(buf, 64, "file '%s%s'", omit ? "..." : "", p);
+		file->base.output(handle, buf);
+	}
 	return 0;
 }
 
@@ -117,9 +132,9 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 
 	/*FIXME: verify val first */
 	ret = lre_compare_int(file->exist, lre_value_get_int(lreval), opt);
-	if(!ret) {
-		char buf[128] = {0};
-		snprintf(buf, 128, "file '%s'%s exist", file->path, file->exist ? "":" not");
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "%sexist.", file->exist ? "":"not ");
 		file->base.output(handle, buf);
 	}
 	return ret;
@@ -130,6 +145,7 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	const char *str;
 	struct lrc_file *file;
 	char user[32];
+	int ret;
 	struct passwd *pw;
 
 	file = (struct lrc_file *)handle;
@@ -152,13 +168,22 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	if(lre_value_is_int(lreval)) {
 		char u[32];	
 		sprintf(u, "%d", lre_value_get_int(lreval));
-		return lre_compare_string(user, u, opt);
+		ret = lre_compare_string(user, u, opt);
+		goto out;
 	}
 	str = lre_value_get_string(lreval);
 	if(!str)
 		return LRE_RET_ERROR;
 
-	return lre_compare_string(user, (char *)str, opt);
+	ret = lre_compare_string(user, (char *)str, opt);
+
+out:
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "expr 'owner' %smatched.", ret ? "" : "not ");
+		file->base.output(handle, buf);
+	}
+	return ret;
 }
 
 static int int2perm(int val)
@@ -176,6 +201,7 @@ static int int2perm(int val)
 
 static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
+	int ret;
 	unsigned int val;
 	struct lrc_file *file;
 
@@ -189,7 +215,13 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 	}
 
 	val = int2perm(lre_value_get_int(lreval));
-	return lre_compare_int(file->permission, val, opt);
+	ret = lre_compare_int(file->permission, val, opt);
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "expr 'permission' %smatched.", ret ? "" : "not ");
+		file->base.output(handle, buf);
+	}
+	return ret;
 }
 
 static struct lrc_stub_arg file_args[] = {

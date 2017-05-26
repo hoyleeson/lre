@@ -279,6 +279,25 @@ static int process_execute(lrc_obj_t *handle)
 	fill_spec_process(process);
 
 	process->state = STATE_EXEC_SUCCESS;
+
+	{
+		char *p;
+		int omit = 0;
+		char buf[64] = {0};
+		int len = strlen(process->procpath);
+		if(len > 32) {
+			omit = 1;
+			p = process->procpath + len - 32;
+		} else
+			p = process->procpath;	
+
+		len = snprintf(buf, 64, "process");
+		if(process->procname)
+			len += snprintf(buf + len, 64 - len, "'%s'", process->procname);
+		if(process->procpath)
+			len += snprintf(buf + len, 64 - len, "'%s%s'", omit ? "..." : "", p);
+		process->base.output(handle, buf);
+	}
 	return 0;
 }
 
@@ -353,6 +372,7 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
+	int ret;
 	struct lrc_process *process;
 
 	process = (struct lrc_process *)handle;
@@ -366,12 +386,19 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	}
 
 	/*FIXME: verify val first */
-	return lre_compare_int(!!process->count, lre_value_get_int(lreval), opt);
+	ret = lre_compare_int(!!process->count, lre_value_get_int(lreval), opt);
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "%srunning.", process->count ? "":"not ");
+		process->base.output(handle, buf);
+	}
+	return ret;
 }
 
 static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
 	int i;
+	int ret;
 	int found = 0;
 	char user[32];
 	struct lrc_process *process;
@@ -403,7 +430,13 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 		}
 	}
 
-	return lre_compare_int(found, 1, opt);
+	ret = lre_compare_int(found, 1, opt);
+	if(vaild_lre_results(ret)) {
+		char buf[64] = {0};
+		snprintf(buf, 64, "expr 'user' %smatched.", ret ? "" : "not ");
+		process->base.output(handle, buf);
+	}
+	return ret;
 }
 
 

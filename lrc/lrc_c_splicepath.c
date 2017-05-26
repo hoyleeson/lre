@@ -109,11 +109,11 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 static struct lrc_stub_arg splicepath_args[] = {
 	{
 		.keyword  	 = "basepath",
-		.description = "Type: string. Specify the basepath to a file",
+		.description = "Type: string. Specify the base path(fragment)",
 		.handler 	 = arg_basepath_handler,
 	}, {
 		.keyword  	 = "path",
-		.description = "Type: string. Specify the path to a file",
+		.description = "Type: string. Specify the path(fragment)",
 		.handler 	 = arg_path_handler,
 	}
 };
@@ -121,7 +121,7 @@ static struct lrc_stub_arg splicepath_args[] = {
 static struct lrc_stub_call lrc_calls[] = {
 	{
 		.keyword 	 = "splicepath",
-		.description = "splice path by path fragment.",
+		.description = "join two path by path fragment.",
 		.constructor = splicepath_constructor,
 		.exec 		 = splicepath_execute,
 		.destructor  = splicepath_destructor,

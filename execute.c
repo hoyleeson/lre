@@ -8,7 +8,7 @@
 #define VAL_UNINITIALIZED 	(0xff)
 
 #define EXEC_STACK_GAP  	(64)
-#define EXEC_DETAIL_UNIT_MAX 	(64)
+#define EXEC_OUT_UNIT_MAX 	(64)
 
 void exec_output_cb(lrc_obj_t *handle, const char *str)
 {
@@ -20,7 +20,7 @@ void exec_output_cb(lrc_obj_t *handle, const char *str)
 	ctx = (struct interp_context *)handle->context;
 	interp = ctx->interp;
 
-	if(ctx->detailen + EXEC_DETAIL_UNIT_MAX >= ctx->detailcap) {
+	if(ctx->detailen + EXEC_OUT_UNIT_MAX >= ctx->detailcap) {
 		if(interp_expands_outbuf(interp)) {
 			loge("Execute: Expand output buf failed.");
 			return;
@@ -30,14 +30,14 @@ void exec_output_cb(lrc_obj_t *handle, const char *str)
 	}
 
 	len = strlen(str) + 1;
-	if(len > EXEC_DETAIL_UNIT_MAX) {
-		logw("lre push exec detail more than %d", EXEC_DETAIL_UNIT_MAX);
-		len = EXEC_DETAIL_UNIT_MAX - 4;
+	if(len > EXEC_OUT_UNIT_MAX) {
+		logw("lre push exec detail more than %d", EXEC_OUT_UNIT_MAX);
+		len = EXEC_OUT_UNIT_MAX - 4;
 		etc = 1;
 	}
 
 	ctx->detailen += snprintf(ctx->details + ctx->detailen, len, "%s", str);
-	ctx->detailen += sprintf(ctx->details + ctx->detailen, "%s, ", etc ? "...": "");
+	ctx->detailen += sprintf(ctx->details + ctx->detailen, "%s ", etc ? "...": "");
 }
 
 

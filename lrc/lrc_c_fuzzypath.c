@@ -68,7 +68,7 @@ static int recurse_dir(char *path, int depth,
 	dir = opendir(path);
 	if (dir == NULL) {
 		// not a directory, carry on
-		logi("lrc 'fuzzypath': not a directory: %s", path);
+		loge("lrc 'fuzzypath': not a directory: %s", path);
 		return -EINVAL;
 	}
 
@@ -441,3 +441,4 @@ void lrc_c_fuzzypath_release(void)
 {
 	lrc_module_unregister(&lrc_fuzzypath_mod);
 }
+

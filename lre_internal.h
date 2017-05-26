@@ -55,6 +55,8 @@ char *lre_create_code_by_macro(struct lre_macro *macro,
 int lre_keyword_init(void);
 void lre_keyword_release(void);
 
+void lre_keyword_dump(void);
+
 /* install/find keyword */
 struct keyword_stub *keyword_install(int type, const char *keyword,
 		void *data, struct keyword_stub *parent);

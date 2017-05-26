@@ -136,7 +136,7 @@ static void keystub_vec_dump(keystub_vec_t *vec, int level)
 		printf("\n");
 }
 
-void keyword_dump(void)
+void lre_keyword_dump(void)
 {
 	keystub_vec_t *vec;
 
