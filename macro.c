@@ -23,11 +23,11 @@ struct lre_macro_arg {
 };
 
 
+struct lre_macro_token {
+	int type;
 #define MACRO_TOKEN_TYPE_ARG 	(1)
 #define MACRO_TOKEN_TYPE_WORD 	(2)
 
-struct lre_macro_token {
-	int type;
 	union {
 		int argindex;
 		char *wordptr;
@@ -54,6 +54,9 @@ struct lre_macro_token *read_macro_token(struct lre_macro *macro, int i)
 	return &macro->token[i];
 }
 
+/* 
+ * Find macro by keyword and arg_count 
+ * */
 struct lre_macro *lre_find_macro(const char *str, int argc)
 {
 	int hashidx;
@@ -69,7 +72,7 @@ struct lre_macro *lre_find_macro(const char *str, int argc)
 	return NULL;
 }
 
-int lre_has_macro(const char *str)
+int is_lre_macro(const char *str)
 {
 	int hashidx;
 	struct lre_macro *macro;
@@ -408,11 +411,11 @@ static int lre_macro_conf_load(const char *fpath)
 	char path[PATH_MAX] = { 0 };
 
 	snprintf(path, PATH_MAX, "%s/%s", lre_get_conf_path(), fpath);
-	logv("load lre macro config: %s.", path);
+	logv("Macro: load lre macro config: %s.", path);
 
     confp = fopen(path, "r");
     if (!confp) {
-        loge("Cannot open file %s", path);
+        loge("Macro: cannot open config file %s", path);
         return 0;
     }
 	
@@ -423,7 +426,7 @@ static int lre_macro_conf_load(const char *fpath)
 		lre_macro_conf_parse(buf);
 	}
 
-	logi("load lre macro config: %s success.", path);
+	logi("Macro: load lre macro config: %s success.", path);
 	free(buf);
 	return 0;
 }
@@ -446,10 +449,10 @@ int lre_macro_init(void)
 
 	ret = lre_macro_conf_load(LR_GLOBAL_MACRO_PATH);
 	if(ret) {
-		loge("Failed to load macro.");
+		loge("Macro: Failed to load macro.");
 		return -EINVAL;
 	}
-	logi("Load macro success. count:%d", macro_count);
+	logi("Macro: Load macro success. count:%d", macro_count);
 	/*	lre_macro_dump(); */
 	return 0;
 }

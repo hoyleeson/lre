@@ -110,7 +110,7 @@ static int lrc_call_register(struct keyword_stub *parent, struct lrc_stub_call *
 {
 	int i;
 	struct keyword_stub *kstub;
-   	struct keyword_stub *substub;
+	struct keyword_stub *substub;
 	struct lrc_stub_arg *arg;
 	struct lrc_stub_var *var;
 
@@ -149,7 +149,7 @@ static int lrc_func_register(struct keyword_stub *parent, struct lrc_stub_func *
 {
 	int i;
 	struct keyword_stub *kstub;
-   	struct keyword_stub *substub;
+	struct keyword_stub *substub;
 	struct lrc_stub_arg *arg;
 	struct lrc_stub_expr *expr;
 	struct lrc_stub_var *var;
@@ -294,14 +294,14 @@ struct lre_result *lre_execute(struct lre_context *ctx, const char *code)
 	res->result = interp_get_result(interp);
 	res->errcode = interp_get_errcode(interp);
 	res->details = interp_get_output(interp);
-	
+
 	return &ctx->res;
 }
 
 struct lre_context *lre_context_create(void)
 {
 	struct lre_context *ctx;
-	
+
 	ctx = xzalloc(sizeof(*ctx));
 
 	ctx->interp = interpreter_create();
@@ -319,13 +319,25 @@ void lre_context_destroy(struct lre_context *ctx)
 int lre_init(void)
 {
 	int ret;
+
 	log_init(LOG_MODE_CALLBACK, LOG_DBG);
 
 	ret = lre_conf_init();
+	if(ret) {
+		loge("Failed to lre config initialized.");
+		return -EINVAL;
+	}
+
 	ret = lre_keyword_init();
+	if(ret) {
+		loge("Failed to lre keyword initialized.");
+		return -EINVAL;
+	}
+
 	ret = lre_macro_init();
 	if(ret) {
-	
+		loge("Failed to lre macro initialized.");
+		return -EINVAL;
 	}
 
 	lrc_builtin_init();

@@ -68,14 +68,96 @@ const char *get_symbol_str(int sym)
 
 /*************************************************************/
 
-static void interp_load_code(struct interp *interp, const char *code)
+int interp_expands_codebuf(struct interp *interp)
 {
+	char *ptr;
+	int len;
+
+	if(interp->cbufsize >= CODEBUF_SIZE_MAX)
+		return -ENOMEM;
+
+	len = min(interp->cbufsize * 2, CODEBUF_SIZE_MAX);
+	ptr = realloc(interp->codebuf, interp->cbufsize);
+	if(!ptr)
+		return -ENOMEM;
+
+	interp->codebuf = ptr;
+	interp->cbufsize = len;
+	return 0;
+}
+
+int interp_expands_workmem(struct interp *interp)
+{
+	char *ptr;
+	int len;
+
+	if(interp->wmemsize >= WORKMEM_SIZE_MAX)
+		return -ENOMEM;
+
+	len = min(interp->wmemsize * 2, WORKMEM_SIZE_MAX);
+	ptr = realloc(interp->workmem, interp->wmemsize);
+	if(!ptr)
+		return -ENOMEM;
+
+	interp->workmem = ptr;
+	interp->wmemsize = len;
+	return 0;
+}
+
+int interp_expands_stacks(struct interp *interp)
+{
+	char *ptr;
+	int len;
+
+	if(interp->stacksize >= STACKS_SIZE_MAX)
+		return -ENOMEM;
+
+	len = min(interp->stacksize * 2, STACKS_SIZE_MAX);
+	ptr = realloc(interp->stacks, interp->stacksize);
+	if(!ptr)
+		return -ENOMEM;
+
+	interp->stacks = ptr;
+	interp->stacksize = len;
+	return 0;
+}
+
+int interp_expands_outbuf(struct interp *interp)
+{
+	char *ptr;
+	int len;
+
+	if(interp->obufsize >= OUTBUF_SIZE_MAX)
+		return -ENOMEM;
+
+	len = min(interp->obufsize * 2, OUTBUF_SIZE_MAX);
+	ptr = realloc(interp->outbuf, interp->obufsize);
+	if(!ptr)
+		return -ENOMEM;
+
+	interp->outbuf = ptr;
+	interp->obufsize = len;
+	return 0;
+}
+
+static int interp_load_code(struct interp_context *ctx, const char *code)
+{
+	struct interp *interp;
 	int len = strlen(code);
 
-	if(interp->cbufsize < len)
-		;
+	interp = ctx->interp;
+	if(interp->cbufsize <= len) {
+		if(interp_expands_codebuf(interp)) {
+			loge("Interp: load code failed. code too huge.(len:%d)", len);
+			return -ENOMEM;
+		}
+
+		loge("Interp: expand code buf, new size: %d", interp->cbufsize);
+		ctx->codeptr = interp->codebuf;
+	}
 
 	strncpy(interp->codebuf, code, len);
+	return 0;
 }
 
 static void interp_context_init(struct interp *interp, struct interp_context *ctx)
@@ -112,21 +194,32 @@ static void interp_context_init(struct interp *interp, struct interp_context *ct
 struct interp_context *interp_context_create(struct interp *interp,
 	   	const char *code)
 {
+	int ret;
 	struct interp_context *ctx;
 
 	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
 	ctx->interp = interp;
 
 	interp_context_init(interp, ctx);
-	interp_load_code(interp, code);
+	ret = interp_load_code(ctx, code);
+	if(ret) {
+		free(ctx);
+		loge("Interp: cannot load code to interp, create context failed.");
+		return NULL;
+	}
 	return ctx;
 }
 
 int interp_context_reload_code(struct interp_context *ctx,
 	   	const char *code)
 {
+	int ret;
 	interp_context_init(ctx->interp, ctx);
-	interp_load_code(ctx->interp, code);
+	ret = interp_load_code(ctx, code);
+	if(ret) {
+		loge("Interp: cannot load code to interp.");
+		return -ENOMEM;
+	}
 	return 0;
 }
 
@@ -144,6 +237,11 @@ int interpreter_execute(struct interp *interp,
 	struct interp_context *ctx;
 
 	ctx = interp_context_create(interp, code);
+	if(!ctx) {
+		ret = -ENOMEM;
+		errstr = "Interpreter err: create context error.";
+		goto err;
+	}
 
 repeat:
 	ret = interp_lexer_analysis(ctx);
@@ -186,7 +284,7 @@ repeat:
 	interp->results = ret;
 	interp->errcode = LRE_RET_OK;
 
-	loge("Interp execute success, result:%d", ret);
+	logd("Interp execute success, result:%d", ret);
 	interp_context_destroy(ctx);
 	return 0;
 

@@ -15,7 +15,7 @@ double lre_calc_dobule(double a, double b, int op)
 		CALC(MUL, *);
 		CALC(DIV, /);
 		default:
-		loge("Unsupport double calc opt:%d", op);
+		loge("Unsupport double calc op:%d", op);
 		return RET_DEAD_VAL;
 	}
 	return RET_DEAD_VAL;
@@ -34,7 +34,7 @@ int lre_calc_int(int a, int b, int op)
 		CALC(MUL, *);
 		CALC(DIV, /);
 		default:
-		loge("Unsupport int calc opt:%d", op);
+		loge("Unsupport int calc op:%d", op);
 		return RET_DEAD_VAL;
 	}
 #undef CALC

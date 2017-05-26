@@ -8,18 +8,26 @@
 #define VAL_UNINITIALIZED 	(0xff)
 
 #define EXEC_STACK_GAP  	(64)
-
 #define EXEC_DETAIL_UNIT_MAX 	(64)
+
 void exec_output_cb(lrc_obj_t *handle, const char *str)
 {
 	int len;
 	int etc = 0;
+	struct interp *interp;
 	struct interp_context *ctx;
 
 	ctx = (struct interp_context *)handle->context;
+	interp = ctx->interp;
 
-	if(ctx->detailen + EXEC_DETAIL_UNIT_MAX >= ctx->detailcap)
-		return;
+	if(ctx->detailen + EXEC_DETAIL_UNIT_MAX >= ctx->detailcap) {
+		if(interp_expands_outbuf(interp)) {
+			loge("Execute: Expand output buf failed.");
+			return;
+		}
+		ctx->details = interp->outbuf;
+		ctx->detailcap = interp->obufsize;
+	}
 
 	len = strlen(str) + 1;
 	if(len > EXEC_DETAIL_UNIT_MAX) {
@@ -117,7 +125,7 @@ static int execute_syntax_val(struct interp_context *ctx,
 	handle = exec_ctx_get_handle(ctx);
 
 	list_for_each_entry(node, &root->head, entry) {
-		tmparg.type = LRE_ARG_TYPE_UNKNOWN;
+		lre_value_init(&tmparg);
 
 		switch(node->type) {
 			case SYNTAX_NODE_TYPE_VAL:	
@@ -170,12 +178,16 @@ static int execute_syntax_val(struct interp_context *ctx,
 				tmparg.type == LRE_ARG_TYPE_DOUBLE) {
 			arg->type = LRE_ARG_TYPE_DOUBLE;
 			arg->valdouble = lre_calc_dobule(arg->valdouble, tmparg.valdouble, opt);
-			if(arg->valint == RET_DEAD_VAL)
+			if(arg->valint == RET_DEAD_VAL) {
+				loge("Execute err: double calc error. op: %d", opt);
 				goto out;
+			}
 		} else {
 			arg->valint = lre_calc_int(arg->valint, tmparg.valint, opt);
-			if(arg->valint == RET_DEAD_VAL)
+			if(arg->valint == RET_DEAD_VAL) {
+				loge("Execute err: integer calc error. op: %d", opt);
 				goto out;
+			}
 		}
 
 		opt = node->opt;
@@ -201,7 +213,7 @@ static int execute_syntax_expr(struct interp_context *ctx,
 	stubexpr = (struct lrc_stub_expr *)estub->data;
 
 	logv("Execute expr '%s'.", estub->keyword);
-	arg.type = LRE_ARG_TYPE_UNKNOWN;
+	lre_value_init(&arg);
 	ret = execute_syntax_val(ctx, &expr->valchilds, &arg);
 	if(ret) {
 		loge("Execute err: expr '%s' to lre_value err.", estub->keyword);
@@ -213,6 +225,7 @@ static int execute_syntax_expr(struct interp_context *ctx,
 		loge("Execute err: failed to call '%s' expr handler.", estub->keyword);
 		return RET_DEAD_VAL;
 	}
+	lre_value_release(&arg);
 	logd("Execute expr '%s' result: %d.", estub->keyword, ret);
 
 	return ret;
@@ -250,10 +263,10 @@ static int execute_syntax_func(struct interp_context *ctx,
 			astub = args->args[i].keystub;
 			stubarg = (struct lrc_stub_arg *)astub->data;
 
-			arg.type = LRE_ARG_TYPE_UNKNOWN;
+			lre_value_init(&arg);
 			ret = execute_syntax_val(ctx, &args->args[i].valchilds, &arg);
 			if(ret) {
-				loge("Execute err: func arg '%s' to lre_value err.", astub->keyword);
+				loge("Execute err: func arg '%s' to lre_value error.", astub->keyword);
 				ret = RET_DEAD_VAL;
 				goto out;
 			}
@@ -265,6 +278,7 @@ static int execute_syntax_func(struct interp_context *ctx,
 				ret = RET_DEAD_VAL;
 				goto out;
 			}
+			lre_value_release(&arg);
 		}
 	}
 
@@ -284,7 +298,7 @@ out:
 		stubfunc->destructor(handle);
 
 	exec_ctx_pop_handle(ctx);
-	logd("Execute func '%s' result:%d.", fstub->keyword, ret);
+	logd("Execute func '%s' result: %d.", fstub->keyword, ret);
 	return ret;
 }
 
@@ -320,7 +334,7 @@ static int execute_syntax_call(struct interp_context *ctx,
 			astub = args->args[i].keystub;
 			stubarg = (struct lrc_stub_arg *)astub->data;
 
-			arg.type = LRE_ARG_TYPE_UNKNOWN;
+			lre_value_init(&arg);
 			ret = execute_syntax_val(ctx, &args->args[i].valchilds, &arg);
 			if(ret) {
 				loge("Execute err: call arg '%s' to lre_vaule err.", astub->keyword);
@@ -334,6 +348,7 @@ static int execute_syntax_call(struct interp_context *ctx,
 				ret = -EINVAL;
 				goto out;
 			}
+			lre_value_release(&arg);
 		}
 	}
 
@@ -356,7 +371,7 @@ out:
 		stubcall->destructor(handle);
 
 	exec_ctx_pop_handle(ctx);
-	logd("Execute call '%s' result:%d.", cstub->keyword, ret);
+	logd("Execute call '%s' result: %d.", cstub->keyword, ret);
 	return ret;
 }
 
@@ -444,7 +459,6 @@ static int execute_syntax_tree(struct interp_context *ctx,
 		return -EINVAL;
 
 	content = container_of(root, struct syntax_content, childs);
-
 	return execute_syntax_content(ctx, content);
 }
 
@@ -461,7 +475,8 @@ int interp_execute(struct interp_context *ctx)
 	logd("Execute: Start exec rules.");
 	ret = execute_syntax_tree(ctx, ctx->tree);
 	if(ctx->stackidx > 0) {
-		loge("Execute err: exec rules interrupted.(%d)", ret);
+		loge("Execute err: exec rules interrupted.(stack: %d, ret: %d)", 
+				ctx->stackidx, ret);
 	}
 
 	return ret;

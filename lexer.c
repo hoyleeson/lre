@@ -243,7 +243,9 @@ done:
 static int lexer_read_token(struct interp_context *ctx)
 {
 	int ret;
+	struct interp *interp;
 
+	interp = ctx->interp;
 	skip_blank(ctx);
 
 	for( ;; ) {
@@ -256,10 +258,17 @@ static int lexer_read_token(struct interp_context *ctx)
 			loge("Lexer err: get next token failed.");
 			return -EINVAL;
 		}
-		/* TODO: expands stack */
+
 		if(ctx->tokencnt >= ctx->tokencap) {
-			loge("Lexer err: lex token stack flow.");
-			return -EINVAL;
+			if(interp_expands_stacks(ctx->interp)) {
+				loge("Lexer err: lex token stack flow, expand failed.");
+				return -EINVAL;
+			}
+
+			logi("Lexer: expand stacks. new size: %d", interp->stacksize);
+			/* Expand stacks success */
+			ctx->tokens = interp->stacks;
+			ctx->tokencap = interp->stacksize / sizeof(struct lex_token);
 		}
 	}
 	return 0;
@@ -272,11 +281,21 @@ int interp_lexer_analysis(struct interp_context *ctx)
 
 	interp = ctx->interp;
 
-	/* Stage 1. Initialize the lexer context. */
+	/* Initialize the lexer context. */
 	ctx->tokens = interp->stacks;
 	ctx->tokenidx = 0;
 	ctx->tokencnt = 0;
 	ctx->tokencap = interp->stacksize / sizeof(struct lex_token);
+	
+	if(interp->cbufsize > interp->wmemsize) {
+		logi("Lexer: codebuf(%d bytes) > workmem(%d bytes), expand.", 
+				interp->cbufsize, interp->wmemsize);
+		if(interp_expands_workmem(interp)) {
+			loge("Lexer: expand workmem failed.");
+			return -ENOMEM;
+		}
+		ctx->wordptr = interp->workmem;
+	}
 
 	ret = lexer_read_token(ctx);
 	return ret;

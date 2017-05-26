@@ -26,6 +26,7 @@ static int prase_macro_call_arg(struct interp_context *ctx,
 		return -EINVAL;
 	}
 
+	/* Peek symbol and expect: ')' */
 	if(token->type == TOKEN_TYPE_SYMBOL && 
 			token->symbol == SYNTAX_SYM_END_PARENTHESIS) {
 		token = read_token(ctx);
@@ -42,7 +43,7 @@ static int prase_macro_call_arg(struct interp_context *ctx,
 		}
 		args[i] = token->word;
 
-		/* Expect ',' or ')' */
+		/* Read symbol. Expect ',' or ')' */
 		token = read_token(ctx);
 		if(!token || token->type != TOKEN_TYPE_SYMBOL) {
 			loge("Preprocess err: failed to get arg token.");
@@ -66,6 +67,7 @@ static int prase_macro_call_arg(struct interp_context *ctx,
 static int preprocess_content(struct interp_context *ctx)
 {
 	int argc;
+	int ret;
 	char *key;
 	char *args[LRE_MACRO_ARGC_MAX];
 	struct lex_token *token;
@@ -88,10 +90,14 @@ static int preprocess_content(struct interp_context *ctx)
 		return -EINVAL;
 	}
 	code = lre_create_code_by_macro(macro, argc, (const char **)args);
-	logd("Preprocess create code:%s", code);
+	logd("Preprocess: create code '%s'", code);
 
 	/* replace old code */
-	interp_context_reload_code(ctx, code);
+	ret = interp_context_reload_code(ctx, code);
+	if(ret) {
+		loge("Preprocess err: failed to reload code.");
+		return -EINVAL;
+	}
 	return PREPROCESS_RES_REPEAT;
 }
 
@@ -106,7 +112,7 @@ int interp_preprocess(struct interp_context *ctx)
 		return -EINVAL;
 	}
 
-	ret = lre_has_macro(token->word);
+	ret = is_lre_macro(token->word);
 	if(!ret) {
 		return 0;
 	}

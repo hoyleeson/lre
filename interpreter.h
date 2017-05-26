@@ -17,9 +17,16 @@
 #define DEFAULT_STACKS_SIZE 	(8192)
 #define DEFAULT_OUTBUF_SIZE 	(4096)
 
+#define CODEBUF_SIZE_MAX 	(4 * DEFAULT_CODEBUF_SIZE)
+#define WORKMEM_SIZE_MAX 	(4 * DEFAULT_WORKMEM_SIZE)
+#define STACKS_SIZE_MAX 	(4 * DEFAULT_STACKS_SIZE)
+#define OUTBUF_SIZE_MAX 	(4 * DEFAULT_OUTBUF_SIZE)
+
+
+
+#define SYNTAX_ARG_MAX 		(8)
 
 #define SYNTAX_CODE_EOF 	(0xffff)
-
 
 #define RET_DEAD_VAL 		LRE_RESULT_UNKNOWN
 
@@ -160,8 +167,6 @@ struct sytax_keyval {
 	struct syntax_root valchilds;
 };
 
-
-#define SYNTAX_ARG_MAX 		(8)
 struct syntax_args {
 	struct sytax_keyval args[SYNTAX_ARG_MAX];
 	int count;
@@ -237,8 +242,6 @@ struct lex_token {
 
 	int symbol;
 };
-
-#define DEFAULT_STACK_SIZE 		(16*1024)
 
 struct interp {
 	/* cache code to be interpreted */
@@ -361,11 +364,15 @@ static inline struct lex_token *read_token(struct interp_context *ctx)
 
 static inline void interp_context_refresh(struct interp_context *ctx)
 {
-	/* reset token idx */
+	/* reset token index */
 	ctx->tokenidx = 0;
 	ctx->codeptr = ctx->interp->codebuf;
 }
 
+
+struct symbol_word *get_symbol_by_id(int sym);
+int get_symbol_type(int sym);
+const char *get_symbol_str(int sym);
 
 void dump_syntax_tree(struct interp_context *ctx);
 void dump_lex_tokens(struct interp_context *ctx);
@@ -381,22 +388,25 @@ int interp_execute(struct interp_context *ctx);
 void destroy_syntax_tree(struct interp_context *ctx,
 		struct syntax_root *tree);
 
-struct symbol_word *get_symbol_by_id(int sym);
-int get_symbol_type(int sym);
-const char *get_symbol_str(int sym);
-
 struct interp_context *interp_context_create(struct interp *interp, const char *code);
 int interp_context_reload_code(struct interp_context *ctx, const char *code);
 void interp_context_destroy(struct interp_context *ctx);
+
+int interp_expands_codebuf(struct interp *interp);
+int interp_expands_workmem(struct interp *interp);
+int interp_expands_stacks(struct interp *interp);
+int interp_expands_outbuf(struct interp *interp);
 
 static inline int interp_get_result(struct interp *interp)
 {
 	return interp->results;
 }
+
 static inline int interp_get_errcode(struct interp *interp)
 {
 	return interp->errcode;
 }
+
 static inline char *interp_get_output(struct interp *interp)
 {
 	return interp->outbuf;

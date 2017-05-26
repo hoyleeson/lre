@@ -34,14 +34,14 @@ struct lre_result {
 	char *details;
 };
 
-/* Logic operation results (true or false) */
+/* Logic rule engine execute results (true or false) */
 #define LRE_RESULT_FALSE 		(0)
 #define LRE_RESULT_TRUE 		(1)
 #define LRE_RESULT_UNKNOWN 		(0xdeaddeed)
 
-/* Program execute return (success or failed code) */
+/* Program execute return (success or errcode) */
 #define LRE_RET_OK 			(0)
-/* Failed code the same to errno */
+/* LRE errcode the same to errno */
 #define LRE_RET_ERROR 		(0xdeaddead)
 
 int lre_initX(const char *path, void (*logcb)(int, const char *));
@@ -73,6 +73,9 @@ double lre_value_get_double(struct lre_value *val);
 int lre_value_is_int(struct lre_value *val);
 int lre_value_is_double(struct lre_value *val);
 int lre_value_is_string(struct lre_value *val);
+
+int lre_calc_int(int a, int b, int op);
+double lre_calc_dobule(double a, double b, int op);
 
 int lre_compare_int(int a, int b, int op);
 int lre_compare_double(double a, double b, int op);

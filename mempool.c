@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include "mempool.h"
-#include "utils.h"
 
 int mempool_init(struct mempool *pool, int size, int count) 
 {

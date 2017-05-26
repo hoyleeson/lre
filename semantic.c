@@ -236,7 +236,6 @@ static int semanitic_tree_parse(struct syntax_root *root, keystub_vec_t *kwvec)
 		return -EINVAL;
 
 	content = container_of(root, struct syntax_content, childs);
-
 	return semanitic_parse_content(content, kwvec);
 }
 

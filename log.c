@@ -5,7 +5,7 @@
 #include "log.h"
 
 /* The message mode refers to where informational messages go
-   0 - stderr, 1 - syslog, 2 - quiet. The default is quiet. */
+   0 - stdout, 1 - syslog, 2 - quiet. The default is quiet. */
 static enum logger_mode log_mode = LOG_MODE_QUIET;
 static enum logger_level log_level = LOG_DBG;
 
@@ -18,7 +18,7 @@ static char level_tags[LOG_LEVEL_MAX + 1] = {
 
 static const char *log_mode_str[LOG_MODE_MAX + 1] = {
 	[LOG_MODE_QUIET] = "quiet",
-	[LOG_MODE_STDERR] = "stderr",
+	[LOG_MODE_STDOUT] = "stdout",
 	[LOG_MODE_FILE] = "file",
 	[LOG_MODE_CLOUD] = "cloud",
 	[LOG_MODE_CALLBACK] = "callback",
@@ -31,11 +31,11 @@ __attribute__((weak)) const char *get_log_path(void)
 
 void default_cbprint(int level, const char *log)
 {
-	fputc(level_tags[level], stderr);
-	fputc(':', stderr);
-	fputs(log, stderr);
-	fputc('\n', stderr);
-	fflush(stderr);
+	fputc(level_tags[level], stdout);
+	fputc(':', stdout);
+	fputs(log, stdout);
+	fputc('\n', stdout);
+	fflush(stdout);
 }
 
 void log_set_logpath(const char *path)
@@ -45,7 +45,7 @@ void log_set_logpath(const char *path)
 
 	logfp = fopen(path, "a+");
 	if(!logfp) {
-		log_mode = LOG_MODE_STDERR;
+		log_mode = LOG_MODE_STDOUT;
 	}
 	logv("log file:%s", path);
 }
@@ -88,9 +88,9 @@ void log_print(int level, const char *fmt, ...)
 		if(log_cbprint)
 			log_cbprint(level, buf + len);
 	} else {
-		fputs(buf, stderr);
-		fputc('\n', stderr);
-		fflush(stderr);
+		fputs(buf, stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
 	}
 }
 
@@ -108,7 +108,7 @@ void log_init(enum logger_mode mode, enum logger_level level)
 	if(log_mode == LOG_MODE_FILE && !logfp) {
 		logfp = fopen(get_log_path(), "a+");
 		if(!logfp) {
-			log_mode = LOG_MODE_STDERR;
+			log_mode = LOG_MODE_STDOUT;
 		}
 		logv("log file:%s", get_log_path());
 	} else if(log_mode == LOG_MODE_CALLBACK && !log_cbprint) {
