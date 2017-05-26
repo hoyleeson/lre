@@ -44,6 +44,13 @@ static struct syntax_content *syntax_content_create(struct interp_context *ctx)
 	return content;
 }
 
+static inline void syntax_content_destroy(struct interp_context *ctx, 
+		struct syntax_content *content)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, content);
+}
+
 static struct syntax_block *syntax_block_create(struct interp_context *ctx)
 {
 	struct syntax_block *block;
@@ -57,6 +64,13 @@ static struct syntax_block *syntax_block_create(struct interp_context *ctx)
 	block->negative = 0;
 
 	return block;
+}
+
+static inline void syntax_block_destroy(struct interp_context *ctx, 
+		struct syntax_block *block)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, block);
 }
 
 static struct syntax_call *syntax_call_create(struct interp_context *ctx)
@@ -76,6 +90,13 @@ static struct syntax_call *syntax_call_create(struct interp_context *ctx)
 	}
 
 	return call;
+}
+
+static inline void syntax_call_destroy(struct interp_context *ctx, 
+		struct syntax_call *call)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, call);
 }
 
 static struct syntax_func *syntax_func_create(struct interp_context *ctx)
@@ -98,6 +119,13 @@ static struct syntax_func *syntax_func_create(struct interp_context *ctx)
 	return func;
 }
 
+static inline void syntax_func_destroy(struct interp_context *ctx, 
+		struct syntax_func *func)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, func);
+}
+
 static struct syntax_expr *syntax_expr_create(struct interp_context *ctx)
 {
 	struct syntax_expr *expr;
@@ -111,6 +139,13 @@ static struct syntax_expr *syntax_expr_create(struct interp_context *ctx)
 	return expr;
 }
 
+static inline void syntax_expr_destroy(struct interp_context *ctx, 
+		struct syntax_expr *expr)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, expr);
+}
+
 static struct syntax_val *syntax_val_create(struct interp_context *ctx)
 {
 	struct syntax_val *exprval;
@@ -121,6 +156,13 @@ static struct syntax_val *syntax_val_create(struct interp_context *ctx)
 	syntax_node_init(&exprval->node, SYNTAX_NODE_TYPE_VAL);
 
 	return exprval;
+}
+
+static inline void syntax_val_destroy(struct interp_context *ctx, 
+		struct syntax_val *val)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, val);
 }
 
 static struct syntax_valblock *syntax_valblock_create(struct interp_context *ctx)
@@ -136,6 +178,12 @@ static struct syntax_valblock *syntax_valblock_create(struct interp_context *ctx
 	return exprvb;
 }
 
+static inline void syntax_valblock_destroy(struct interp_context *ctx, 
+		struct syntax_valblock *valblock)
+{
+	struct interp *interp = ctx->interp;
+	mem_free(&interp->syntax_mpool, valblock);
+}
 
 static __attribute__((unused)) char *peek_keyword(struct interp_context *ctx)
 {
@@ -498,7 +546,7 @@ static int syntax_parse_val(struct interp_context *ctx,
 			bracket = read_end_bracket(ctx);
 			if(bracket != SYNTAX_SYM_END_PARENTHESIS) {
 				loge("Syntax err: expr block needs ')'.");
-				free(exprvb);
+				syntax_valblock_destroy(ctx, exprvb);
 				goto err;
 			}
 			break;
@@ -561,7 +609,6 @@ static int syntax_parse_expr(struct interp_context *ctx,
 	opt = read_operator(ctx);
 	if(get_symbol_type(opt) != SYM_TYPE_OPT_COMP) {
 		loge("Syntax err: operator error:%d.", opt);
-		free(expr->key);
 		goto err;
 	}
 	expr->opt = opt;
@@ -577,7 +624,7 @@ static int syntax_parse_expr(struct interp_context *ctx,
 	logd("Syntax: parse expr '%s' success", expr->key);
 	return 0;
 err:
-	free(expr);
+	syntax_expr_destroy(ctx, expr);
 	return -EINVAL;
 }
 
@@ -686,7 +733,7 @@ static int syntax_parse_block(struct interp_context *ctx,
 
 	return 0;
 err:
-	free(block);
+	syntax_block_destroy(ctx, block);
 	return -EINVAL;
 }
 
@@ -714,7 +761,6 @@ static int syntax_parse_func_args(struct interp_context *ctx,
 
 		opt = read_operator(ctx);
 		if(get_symbol_type(opt) != SYM_TYPE_OPT_ASSIGN) {
-			free(args->args[i].key);
 			loge("Syntax err: arg expr error.");
 			goto err;
 		}
@@ -740,11 +786,6 @@ static int syntax_parse_func_args(struct interp_context *ctx,
 
 	return 0;
 err:
-	for(i=0; i < args->count; i++) {
-		free(args->args[i].key);
-		/* FIXME: */
-	//	free(args->args[i].val);
-	}
 	args->count = 0;
 	return -EINVAL;
 }
@@ -787,13 +828,11 @@ static int syntax_parse_call(struct interp_context *ctx,
 			ret = syntax_parse_call_args(ctx, &call->args);
 			if(ret) {
 				loge("Syntax err: parse call args failed.");
-				free(call->keyword);
 				goto err;	
 			}
 		}
 	} else {
 		loge("Syntax err: parse call failed. not found args and body");
-		free(call->keyword);
 		goto err;
 	}
 	*ppcall = call;
@@ -801,7 +840,7 @@ static int syntax_parse_call(struct interp_context *ctx,
 	return 0;
 
 err:
-	free(call);
+	syntax_call_destroy(ctx, call);
 	return -EINVAL;
 }
 
@@ -825,32 +864,27 @@ static int syntax_parse_func(struct interp_context *ctx,
 		ret = syntax_parse_func_args(ctx, &func->args);
 		if(ret) {
 			loge("Syntax err: parse func args failed.");
-			free(func->keyword);
 			goto err;	
 		}
 		bracket = read_bracket(ctx);
 		if(bracket != SYNTAX_SYM_START_BRACE) {
 			loge("Syntax err: parse func failed. not found body");
-			free(func->keyword);
 			goto err;
 		}
 
 		ret = syntax_parse_func_body(ctx, &func->body);
 		if(ret) {
 			loge("Syntax err: parse func body failed.");
-			free(func->keyword);
 			goto err;	
 		}
 	} else if(bracket == SYNTAX_SYM_START_BRACE) {
 		ret = syntax_parse_func_body(ctx, &func->body);
 		if(ret) {
 			loge("Syntax err: parse func body failed..");
-			free(func->keyword);
 			goto err;	
 		}
 	} else {
 		loge("Syntax err: parse func failed. not found args and body");
-		free(func->keyword);
 		goto err;
 	}
 
@@ -864,7 +898,7 @@ static int syntax_parse_func(struct interp_context *ctx,
 	return 0;
 
 err:
-	free(func);
+	syntax_func_destroy(ctx, func);
 	return -EINVAL;
 }
 
@@ -892,6 +926,131 @@ int interp_syntax_parse(struct interp_context *ctx)
 	ret = syntax_parse_content(ctx);
 
 	return ret;
+}
+
+
+static void destroy_syntax_childs(struct interp_context *ctx, struct syntax_root *root);
+static void destroy_syntax_call(struct interp_context *ctx, struct syntax_call *call);
+
+static void destroy_syntax_val(struct interp_context *ctx,
+		struct syntax_root *root)
+{
+	struct syntax_node *node;
+	struct syntax_val *exprval;
+	struct syntax_valblock *exprvb;
+	struct syntax_call *exprvcall;
+
+	list_for_each_entry(node, &root->head, entry) {
+		switch(node->type) {
+			case SYNTAX_NODE_TYPE_VAL:	
+				exprval = container_of(node, struct syntax_val, node);
+				syntax_val_destroy(ctx, exprval);
+				break;
+			case SYNTAX_NODE_TYPE_VALBLOCK:	
+				exprvb = container_of(node, struct syntax_valblock, node);
+				destroy_syntax_val(ctx, &exprvb->childs);
+				syntax_valblock_destroy(ctx, exprvb);
+				break;
+			case SYNTAX_NODE_TYPE_CALL:
+				exprvcall = container_of(node, struct syntax_call, node);
+				destroy_syntax_call(ctx, exprvcall);
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+static void destroy_syntax_expr(struct interp_context *ctx,
+		struct syntax_expr *expr)
+{
+	destroy_syntax_val(ctx, &expr->valchilds);
+	syntax_expr_destroy(ctx, expr);
+}
+
+static void destroy_syntax_func(struct interp_context *ctx,
+		struct syntax_func *func)
+{
+	if(func->args.count > 0) {
+		int i;
+		struct syntax_args *args = &func->args;
+
+		for(i=0; i<args->count; i++) {
+			destroy_syntax_val(ctx, &args->args[i].valchilds);
+		}
+	}
+
+	destroy_syntax_childs(ctx, &func->body.childs);
+	syntax_func_destroy(ctx, func);
+}
+
+static void destroy_syntax_call(struct interp_context *ctx,
+		struct syntax_call *call)
+{
+	if(call->args.count > 0) {
+		int i;
+		struct syntax_args *args = &call->args;
+
+		for(i=0; i<args->count; i++) {
+			destroy_syntax_val(ctx, &args->args[i].valchilds);
+		}
+	}
+	syntax_call_destroy(ctx, call);
+}
+
+static void destroy_syntax_block(struct interp_context *ctx, 
+		struct syntax_block *block)
+{
+	destroy_syntax_childs(ctx, &block->childs);
+	syntax_block_destroy(ctx, block);
+}
+
+static void destroy_syntax_content(struct interp_context *ctx,
+		struct syntax_content *content)
+{
+	destroy_syntax_childs(ctx, &content->childs);
+	syntax_content_destroy(ctx, content);
+}
+
+
+static void destroy_syntax_childs(struct interp_context *ctx, 
+		struct syntax_root *root)
+{
+	struct syntax_func *func;
+	struct syntax_block *block;
+	struct syntax_expr *expr;
+	struct syntax_node *node;
+
+	list_for_each_entry(node, &root->head, entry) {
+		switch(node->type) {
+			case SYNTAX_NODE_TYPE_FUNC:	
+				func = container_of(node, struct syntax_func, node);
+				destroy_syntax_func(ctx, func);
+				break;
+			case SYNTAX_NODE_TYPE_EXPR:	
+				expr = container_of(node, struct syntax_expr, node);
+				destroy_syntax_expr(ctx, expr);
+				break;
+			case SYNTAX_NODE_TYPE_BLOCK:	
+				block = container_of(node, struct syntax_block, node);
+				destroy_syntax_block(ctx, block);
+				break;
+			default:
+				break;
+		}
+	}
+}
+
+void destroy_syntax_tree(struct interp_context *ctx,
+		struct syntax_root *tree)
+{
+	struct syntax_content *content;
+
+	if(!tree)
+		return;
+
+	content = container_of(tree, struct syntax_content, childs);
+	destroy_syntax_content(ctx, content);
 }
 
 

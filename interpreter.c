@@ -132,7 +132,7 @@ int interp_context_reload_code(struct interp_context *ctx,
 
 void interp_context_destroy(struct interp_context *ctx)
 {
-	/*TODO: free syntax tree ctx->root */
+	destroy_syntax_tree(ctx, ctx->tree);
 	free(ctx);
 }
 

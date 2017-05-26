@@ -378,6 +378,9 @@ int interp_syntax_parse(struct interp_context *ctx);
 int interp_semantic_analysis(struct interp_context *ctx);
 int interp_execute(struct interp_context *ctx);
 
+void destroy_syntax_tree(struct interp_context *ctx,
+		struct syntax_root *tree);
+
 struct symbol_word *get_symbol_by_id(int sym);
 int get_symbol_type(int sym);
 const char *get_symbol_str(int sym);
