@@ -173,7 +173,15 @@ static int network_info_load(void)
 {
 	tcp_state_load();
 	udp_state_load();
+	net_initialized = 1;
 	return 0;
+}
+
+static void network_info_release(void)
+{
+	net_initialized = 0;
+	free(tcp_stats);
+	free(udp_stats);
 }
 
 
@@ -190,7 +198,6 @@ static int network_execute(lrc_obj_t *handle)
 	network = (struct lrc_network *)handle;
 
 	if(net_initialized == 0) {
-		net_initialized = 1;
 		network_info_load();
 	}
 
@@ -377,6 +384,9 @@ int lrc_network_init(void)
 
 void lrc_network_release(void)
 {
+	if(net_initialized)
+		network_info_release();
+
 	lrc_module_unregister(&lrc_network_mod);
 }
 

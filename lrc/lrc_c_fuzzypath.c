@@ -63,7 +63,7 @@ static int recurse_dir(char *path, int depth,
 	struct dirent *dp;
 	int pathlen = strlen(path);
 	char *ptr;
-	char *subpath = xzalloc(sizeof(char)*PATH_MAX);
+	char *subpath;
 
 	dir = opendir(path);
 	if (dir == NULL) {
@@ -72,6 +72,7 @@ static int recurse_dir(char *path, int depth,
 		return -EINVAL;
 	}
 
+	subpath = xzalloc(sizeof(char)*PATH_MAX);
 	while ((dp = readdir(dir)) != NULL) {
 		struct stat st;
 		if (strcmp(dp->d_name, ".") == 0 ||

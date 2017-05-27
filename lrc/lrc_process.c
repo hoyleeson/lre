@@ -178,7 +178,17 @@ static struct process_info *get_process_info(int pid)
 	return psinfo;
 }
 
-static int scan_processes(void)
+static void process_info_free(struct process_info *psinfo)
+{
+	free(psinfo->name);
+	free(psinfo->user);
+	free(psinfo->cmdline);
+	if(psinfo->binpath)
+		free(psinfo->binpath);
+	free(psinfo);
+}
+
+static int processes_info_load(void)
 {
 	DIR *d;
 	struct dirent *de;
@@ -201,6 +211,18 @@ static int scan_processes(void)
 	closedir(d);
 
 	return 0;
+}
+
+static void processes_info_release(void)
+{
+	struct process_info *psinfo, *p;
+
+	psinfo = processlist;
+	while(psinfo) {
+		p = psinfo->next;
+		process_info_free(psinfo);
+		psinfo = p;
+	}
 }
 
 /****************************************************/
@@ -267,7 +289,7 @@ static int process_execute(lrc_obj_t *handle)
 {
 	struct lrc_process *process;
 	if(processlist == NULL)
-		scan_processes();
+		processes_info_load();
 
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
@@ -454,7 +476,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	int len = 0;
 
 	if(processlist == NULL)
-		scan_processes();
+		processes_info_load();
 
 	process = (struct lrc_process *)handle;
 	if(!process->procname && !process->procpath) {
@@ -629,6 +651,8 @@ int lrc_process_init(void)
 
 void lrc_process_release(void)
 {
+	if(processlist)
+		processes_info_release();
 	lrc_module_unregister(&lrc_process_mod);
 }
 

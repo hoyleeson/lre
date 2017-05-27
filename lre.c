@@ -101,6 +101,8 @@ static void lre_module_delete(struct lrc_module *module)
 	list_for_each_entry_safe(lrm, tmp, &lre_modulelists, entry) {
 		if(lrm->module == module) {
 			list_del(&lrm->entry);
+			free(lrm);
+			return;
 		}
 	}
 }

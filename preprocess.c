@@ -98,6 +98,7 @@ static int preprocess_content(struct interp_context *ctx)
 		loge("Preprocess err: failed to reload code.");
 		return -EINVAL;
 	}
+	free(code);
 	return PREPROCESS_RES_REPEAT;
 }
 
