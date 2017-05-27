@@ -345,10 +345,10 @@ int lre_init(void)
 	return 0;
 }
 
-int lre_initX(const char *path, void (*logcb)(int, const char *))
+int lre_initX(const char *confpath, void (*logcb)(int, const char *))
 {
 	log_set_callback(logcb);
-	lre_set_conf_path(path);
+	lre_set_conf_path(confpath);
 	return lre_init();
 }
 

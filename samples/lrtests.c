@@ -11,9 +11,20 @@
 
 struct lre_context *ctx;
 
+void logcb(int level, const char *log)
+{
+#if 0
+	if(level > 3)
+		return;
+#endif
+	fputs(log, stdout);
+	fputc('\n', stdout);
+	fflush(stdout);
+}
+
 static int lrtest_init(void) 
 {
-	lre_init();
+	lre_initX(".", logcb);
 	ctx = lre_context_create();
 	if(!ctx) {
 		printf("failed to create lre context.\n");
@@ -160,7 +171,6 @@ static int lrtest_file_exec(const char *path)
 	free(buf);
 	return 0;
 }
-
 
 int main(int argc, char **argv)
 {

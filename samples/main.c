@@ -48,12 +48,23 @@ static char *code[] = {
 #endif
 };
 
+
+void logcb(int level, const char *log)
+{
+	if(level > 3)
+		return;
+
+	fputs(log, stdout);
+	fputc('\n', stdout);
+	fflush(stdout);
+}
+
 int main(int argc, char **argv)
 {
 	int i;
 	struct lre_result *result;
 	struct lre_context *ctx;
-	lre_init();
+	lre_initX(".", logcb);
 	ctx = lre_context_create();
 
 #if 0
