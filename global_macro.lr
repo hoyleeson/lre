@@ -18,5 +18,8 @@ define process_user_unequal(_name, _path, _owner) 	"process(procname=$_name, pro
 
 define process_running_fuzzypath(_name, _fzpath, _owner) 	"process(procname=$_name, procpath=fuzzypath(path=$_fzpath)) {running != 1 || owner != $_owner}"
 
+define network_listening(_port) 	"network(port=$_port) {listen == 1}"
+define network_listening(_protocol, _port) 	"network(protocol=$_protocol, port=$_port) {listen == 1}"
+
 include "samples/local_macro.lr"
 

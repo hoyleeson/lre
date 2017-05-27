@@ -320,7 +320,7 @@ int lre_init(void)
 {
 	int ret;
 
-	log_init(LOG_MODE_CALLBACK, LOG_DBG);
+	log_init(LOG_MODE_CALLBACK, LOG_VERBOSE);
 
 	ret = lre_conf_init();
 	if(ret) {

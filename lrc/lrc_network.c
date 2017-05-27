@@ -59,6 +59,9 @@ static int tcp_state_load(void)
 
 	logv("TCP state: ");
 	fseek(fp, 0, SEEK_SET);
+
+	/* discard the first line */
+	xgetline(buf, 511, fp);
 	while(xgetline(buf, 511, fp)) {
 		int len = strlen(buf);
 		buf[len] = '\0';
@@ -124,6 +127,9 @@ static int udp_state_load(void)
 
 	logv("UDP state: ");
 	fseek(fp, 0, SEEK_SET);
+
+	/* discard the first line */
+	xgetline(buf, 511, fp);
 	while(xgetline(buf, 511, fp)) {
 		int len = strlen(buf);
 		buf[len] = '\0';
@@ -188,12 +194,15 @@ static int network_execute(lrc_obj_t *handle)
 		network_info_load();
 	}
 
+	if(strlen(network->protocol) == 0) {
+		sprintf(network->protocol, "tcp");	
+	}
+
 	{
 		int len;
 		char buf[64] = {0};
-		len = snprintf(buf, 64, "network");
-		if(strlen(network->protocol) > 0)
-			len += snprintf(buf + len, 64 - len, "protocol:%s", network->protocol);
+		len = snprintf(buf, 64, "network ");
+		len += snprintf(buf + len, 64 - len, "protocol:%s ", network->protocol);
 		if(network->port != INVAILD_PORT)
 			len += snprintf(buf + len, 64 - len, "port:%d", network->port);
 		network->base.output(handle, buf);
@@ -210,7 +219,7 @@ static lrc_obj_t *network_constructor(void)
 		return (lrc_obj_t *)0;
 	}
 
-	memset(network, 0, sizeof(network->protocol));
+	memset(network, 0, sizeof(*network));
 	network->port = INVAILD_PORT;
 	return (lrc_obj_t *)network;
 }
@@ -258,7 +267,7 @@ static int arg_port_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	network->port = lre_value_get_int(lreval);
 	logd("lrc 'network' arg: port:%d", network->port);
-	return LRE_RESULT_TRUE;
+	return LRE_RET_OK;
 }
 
 static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
@@ -318,7 +327,7 @@ static int expr_listen_handler(lrc_obj_t *handle, int opt, struct lre_value *lre
 static struct lrc_stub_arg network_args[] = {
 	{
 		.keyword  	 = "protocol",
-		.description = "Network protocol. Support val: 'tcp', 'udp'(Ignore case). example: protocol=TCP",
+		.description = "Network protocol. Support val: 'tcp', 'udp'(Ignore case), default:tcp. example: protocol=TCP",
 		.handler 	 = arg_protocol_handler,
 	}, {
 		.keyword  	 = "port",

@@ -7,12 +7,16 @@ SRCS := main.c  lrc_funcsample.c  lrc_callsample.c  lrc_samplez.c
 OBJS := $(patsubst %.c,%.o,$(SRCS))
 
 samples_bin := samples
+lrtests_bin := lrtests
 
-target := $(samples_bin)
+target := $(samples_bin) $(lrtests_bin)
 
 all: $(target)
 
 $(samples_bin): $(OBJS)
+	$(CC) -g -o $@ $^ $(LDFLAGS)
+
+$(lrtests_bin): lrtests.c
 	$(CC) -g -o $@ $^ $(LDFLAGS)
 
 %.o : %.c

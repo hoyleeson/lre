@@ -11,7 +11,9 @@ OBJS := $(patsubst %.c,%.o,$(SRCS))
 liblre_a := liblre.a
 liblre_so := liblre.so
 
-target := $(liblre_so) $(liblre_a)
+lrexe_bin := lrexe
+
+target := $(liblre_so) $(liblre_a) $(lrexe_bin)
 
 all: $(target)
 	make -C samples
@@ -21,6 +23,9 @@ $(liblre_so): $(OBJS)
 
 $(liblre_a): $(OBJS)
 	ar -rs $@ $^
+
+$(lrexe_bin): lrexe.c
+	$(CC) -g -o $@ $^ $(LDFLAGS) $(liblre_a)
 
 %.o : %.c
 	gcc $(CFLAGS) -c $< $(INCLUDES) -o $@

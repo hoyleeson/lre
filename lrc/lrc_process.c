@@ -92,9 +92,9 @@ static char *nexttok(char **strp)
 
 static struct process_info *get_process_info(int pid)
 {
-	char user[32];
-	char buf[1024];
-	char path[PATH_MAX];
+	char user[32] = {0};
+	char buf[1024] = {0};
+	char path[PATH_MAX] = {0};
 	struct stat stats;
 	int fd, r;
 	char *ptr, *name;
@@ -293,9 +293,9 @@ static int process_execute(lrc_obj_t *handle)
 
 		len = snprintf(buf, 64, "process");
 		if(process->procname)
-			len += snprintf(buf + len, 64 - len, "'%s'", process->procname);
+			len += snprintf(buf + len, 64 - len, " '%s'", process->procname);
 		if(process->procpath)
-			len += snprintf(buf + len, 64 - len, "'%s%s'", omit ? "..." : "", p);
+			len += snprintf(buf + len, 64 - len, " '%s%s'", omit ? "..." : "", p);
 		process->base.output(handle, buf);
 	}
 	return 0;
@@ -445,7 +445,7 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	int ret;
-	struct process_info *psinfo = processlist;
+	struct process_info *psinfo;
 	struct lrc_process *process;
 	char *patharr[PROCESS_COUNT_MAX];
 	int count = 0;
@@ -463,6 +463,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 		return -EINVAL;
 	}
 
+	psinfo = processlist;
 	while(psinfo) {
 		ret = 1;
 
@@ -522,7 +523,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 	}
 	outpath[len - 1] = '\0';
 	
-	logi("Exec processdir call, result dir:%s.", outpath);
+	logd("Exec processdir call, result dir:%s.", outpath);
 
 	lre_value_dup2_string(val, outpath);
 	free(outpath);
