@@ -85,6 +85,7 @@ int main(int argc, char **argv)
 	printf("Execute rule file: %s\n", fpath);
 	lrexe_execute(code);
 	lrexe_release();
+	free(code);
 	return 0;
 }
 

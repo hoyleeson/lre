@@ -162,6 +162,8 @@ static int interp_load_code(struct interp_context *ctx, const char *code)
 
 static void interp_context_init(struct interp *interp, struct interp_context *ctx)
 {
+	ctx->interp = interp;
+
 	ctx->tree = NULL;
 
 	/* Use for Lexer */
@@ -197,8 +199,8 @@ struct interp_context *interp_context_create(struct interp *interp,
 	int ret;
 	struct interp_context *ctx;
 
-	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
-	ctx->interp = interp;
+//	ctx = (struct interp_context *)xzalloc(sizeof(*ctx));
+	ctx = &interp->context;
 
 	interp_context_init(interp, ctx);
 	ret = interp_load_code(ctx, code);
@@ -226,7 +228,7 @@ int interp_context_reload_code(struct interp_context *ctx,
 void interp_context_destroy(struct interp_context *ctx)
 {
 	destroy_syntax_tree(ctx, ctx->tree);
-	free(ctx);
+//	free(ctx);
 }
 
 int interpreter_execute(struct interp *interp, 

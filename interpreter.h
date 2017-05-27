@@ -243,6 +243,36 @@ struct lex_token {
 	int symbol;
 };
 
+
+struct interp;
+struct interp_context {
+	struct interp *interp;
+
+	/* syntax tree */
+	struct syntax_root *tree;
+
+	/* Use for Lexer */
+	char *codeptr;
+	char *wordptr;
+
+	/* Use for Lexer and Syntax parser */
+	struct lex_token *tokens;
+	int tokenidx;
+	int tokencnt;
+	int tokencap;
+
+	/* Use for Executor */
+	lrc_obj_t **stack;
+	int stackidx;
+	int stackdepth;
+
+	char *details;  /* Execute detail infomation (description string) */
+	int detailen;
+	int detailcap;
+
+	void *context;
+};
+
 struct interp {
 	/* cache code to be interpreted */
 	char *codebuf;
@@ -270,34 +300,8 @@ struct interp {
 	int obufsize;
 
 	struct mempool syntax_mpool;
-};
 
-struct interp_context {
-	struct interp *interp;
-
-	/* syntax tree */
-	struct syntax_root *tree;
-
-	/* Use for Lexer */
-	char *codeptr;
-	char *wordptr;
-
-	/* Use for Lexer and Syntax parser */
-	struct lex_token *tokens;
-	int tokenidx;
-	int tokencnt;
-	int tokencap;
-
-	/* Use for Executor */
-	lrc_obj_t **stack;
-	int stackidx;
-	int stackdepth;
-
-	char *details;  /* Execute detail infomation (description string) */
-	int detailen;
-	int detailcap;
-
-	void *context;
+	struct interp_context context;
 };
 
 
