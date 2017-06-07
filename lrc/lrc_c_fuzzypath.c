@@ -18,6 +18,7 @@ struct lrc_fuzzypath {
 	struct lrc_object base;
 	char *basepath;
 	char *path;
+	int isabspath;
 };
 
 #define PATH_ARR_MAX  	(PATH_MAX * 10)
@@ -257,7 +258,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 #if 1
 	outpath = xzalloc(PATH_ARR_MAX + 1);
 
-	if(fuzzypath->basepath) {
+	if(fuzzypath->basepath && !fuzzypath->isabspath) {
 		/* Support mutli path */
 		char *p;
 		char *ptr;
@@ -338,6 +339,7 @@ static lrc_obj_t *fuzzypath_constructor(void)
 
 	fuzzypath->basepath = NULL;
 	fuzzypath->path = NULL;
+	fuzzypath->isabspath = 0;
 
 	return (lrc_obj_t *)fuzzypath;
 }
@@ -393,7 +395,11 @@ static int arg_path_handler(lrc_obj_t *handle, struct lre_value *lreval)
 
 	fuzzypath->path = strdup(str);
 	assert_ptr(fuzzypath->path);
-	logd("lrc 'fuzzypath' arg: path:%s", fuzzypath->path);
+
+	if(fuzzypath->path[0] == '/')
+		fuzzypath->isabspath = 1;
+	logd("lrc 'fuzzypath' arg: %spath:%s", 
+			fuzzypath->isabspath ? "abs":"", fuzzypath->path);
 	return LRE_RET_OK;
 }
 
