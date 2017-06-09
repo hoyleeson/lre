@@ -55,10 +55,12 @@ static void keyword_stub_destroy(struct keyword_stub *keystub)
 
 	free(keystub->keyword);
 
-	vector_foreach_active_slot(keystub->subvec, substub, i) {
-		if(!substub)
-			continue;
-		free(substub);
+	if(keystub->subvec) {
+		vector_foreach_active_slot(keystub->subvec, substub, i) {
+			if(!substub)
+				continue;
+			keyword_stub_destroy(substub);
+		}
 	}
 	if(keystub->subvec)
 		vector_free(keystub->subvec);
@@ -79,6 +81,21 @@ struct keyword_stub *keyword_install(int type, const char *keyword,
 
 void keyword_uninstall(struct keyword_stub *keystub)
 {
+	int i;
+	keystub_vec_t *pvec;
+	struct keyword_stub *stub;
+
+	if(keystub->parent) {
+		pvec = keystub->parent->subvec;
+	} else {
+		pvec = get_root_keyvec();
+	}
+
+	vector_foreach_active_slot(pvec, stub, i) {
+		if(!stub || stub != keystub)
+			continue;
+		vector_unset(pvec, i);
+	}
 	keyword_stub_destroy(keystub);
 }
 
@@ -158,7 +175,7 @@ void lre_keyword_release(void)
 	vector_foreach_active_slot(root_kstub_vec, keystub, i) {
 		if(!keystub)
 			continue;
-		free(keystub);
+		keyword_stub_destroy(keystub);
 	}
 
 	vector_free(root_kstub_vec);
