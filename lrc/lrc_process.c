@@ -232,6 +232,7 @@ struct lrc_process {
 	struct lrc_object base;
 	char *procname;
 	char *procpath;
+	char *excludepath;
 
 	struct process_info *psinfo[PROCESS_COUNT_MAX];
 	int count;
@@ -275,6 +276,25 @@ static void fill_spec_process(struct lrc_process *process)
 			}
 			ret &= r;
 		}
+
+		if(process->excludepath) {
+			int r;
+			char *ptr;
+
+			if(!psinfo->binpath) {
+				r = 1;
+			} else {
+				r = !!strncmp(process->excludepath, psinfo->binpath, strlen(psinfo->binpath));
+
+				ptr = process->excludepath;
+				while((ptr = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
+					ptr++;
+					r &= !!strncmp(ptr, psinfo->binpath, strlen(psinfo->binpath));
+				}
+			}
+			ret &= r;
+		}
+
 		if(ret) {
 			process->psinfo[process->count++] = psinfo;
 			logd("Get the process:%s, binpath:%s", 
@@ -303,21 +323,23 @@ static int process_execute(lrc_obj_t *handle)
 	process->state = STATE_EXEC_SUCCESS;
 
 	{
-		char *p;
 		int omit = 0;
+		int len;
 		char buf[64] = {0};
-		int len = strlen(process->procpath);
-		if(len > 32) {
-			omit = 1;
-			p = process->procpath + len - 32;
-		} else
-			p = process->procpath;	
 
 		len = snprintf(buf, 64, "process");
 		if(process->procname)
 			len += snprintf(buf + len, 64 - len, " '%s'", process->procname);
-		if(process->procpath)
+		if(process->procpath) {
+			char *p;
+			int l = strlen(process->procpath);
+			if(l > 32) {
+				omit = 1;
+				p = process->procpath + l - 32;
+			} else
+				p = process->procpath;
 			len += snprintf(buf + len, 64 - len, " '%s%s'", omit ? "..." : "", p);
+		}
 		process->base.output(handle, buf);
 	}
 	return 0;
@@ -334,6 +356,7 @@ static lrc_obj_t *process_constructor(void)
 	}
 	process->procname = NULL;
 	process->procpath = NULL;
+	process->excludepath = NULL;
 	process->count = 0;
 
 	return (lrc_obj_t *)process;
@@ -392,6 +415,27 @@ static int arg_procpath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	return LRE_RET_OK;
 }
 
+static int arg_excludepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+	if(!lreval || !lre_value_is_string(lreval)) {
+		loge("lrc 'process' err: procpath must be string");
+		return LRE_RET_ERROR;
+	}
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
+
+	process->excludepath = strdup(str);
+	assert_ptr(process->excludepath);
+	logd("lrc 'process' arg: excludepath: %s", process->excludepath);
+	return LRE_RET_OK;
+}
+
+
 static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
 	int ret;
@@ -410,8 +454,19 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	/*FIXME: verify val first */
 	ret = lre_compare_int(!!process->count, lre_value_get_int(lreval), opt);
 	if(vaild_lre_results(ret)) {
-		char buf[64] = {0};
-		snprintf(buf, 64, "%srunning.", process->count ? "":"not ");
+		int i;
+		char buf[256] = {0};
+		int len;
+		len = snprintf(buf, 256, "%srunning.", process->count ? "":"not ");
+		if(process->excludepath && process->count > 0) {
+			len += snprintf(buf + len, 256 - len, " path:");
+			for(i=0; i<process->count; i++) {
+				struct process_info *psinfo;
+				psinfo = process->psinfo[i];
+				len += snprintf(buf + len, 256 - len, "%s;", 
+						psinfo->binpath ? psinfo->binpath : "(unknown)");
+			}
+		}
 		process->base.output(handle, buf);
 	}
 	return ret;
@@ -587,6 +642,10 @@ static struct lrc_stub_arg process_args[] = {
 		.keyword  	 = "procpath",
 		.description = "Type: string. Specify process binary directory. example: procpath=\"/usr/local/\"",
 		.handler 	 = arg_procpath_handler,
+	}, {
+		.keyword  	 = "excludepath",
+		.description = "Type: string. example: excludepath=\"/usr/local/\"",
+		.handler 	 = arg_excludepath_handler,
 	}
 };
 

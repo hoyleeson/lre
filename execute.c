@@ -8,7 +8,7 @@
 #define VAL_UNINITIALIZED 	(0xff)
 
 #define EXEC_STACK_GAP  	(64)
-#define EXEC_OUT_UNIT_MAX 	(64)
+#define EXEC_OUT_UNIT_MAX 	(256)
 
 void exec_output_cb(lrc_obj_t *handle, const char *str)
 {

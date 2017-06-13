@@ -264,11 +264,21 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		char *ptr;
 		char *tmppath;
 		int ret;
-		int i;
+		int i, j;
+		char *bpatharr[1024];
 		char *patharr[1024];
+		int bcnt = 0;
 		int cnt = 0;
 
 		ptr = fuzzypath->basepath;
+		while((p = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
+			*p++ = '\0';
+			bpatharr[bcnt++] = ptr;
+			ptr = p;
+		}
+		bpatharr[bcnt++] = ptr;
+
+		ptr = fuzzypath->path;
 		while((p = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
 			*p++ = '\0';
 			patharr[cnt++] = ptr;
@@ -277,10 +287,48 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		patharr[cnt++] = ptr;
 
 		tmppath = xzalloc(PATH_ARR_MAX + 1);
-		for(i=0; i<cnt; i++) {
+		for(i=0; i<bcnt; i++) {
+			for(j=0; j<cnt; j++) {
+				memset(tmppath, 0, PATH_ARR_MAX + 1);
+				len = snprintf(path, PATH_MAX, "%s/", bpatharr[i]);
+				len += snprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
+				path[len] = '\0';
+
+				logv("lrc 'fuzzypath': fuzzypath:%s", path);
+
+				ret = fuzzy2path(path, tmppath);
+				if(ret) {
+					continue;	
+				}
+				outlen += snprintf(outpath + outlen, PATH_ARR_MAX - outlen, "%s%c", 
+						tmppath, MULTIPATH_SPLIT_CH);
+			}
+		}
+		if(outlen > 0)
+			outpath[outlen - 1] = '\0';
+		free(tmppath);
+	} else {
+		/* Support mutli path */
+		char *p;
+		char *ptr;
+		char *tmppath;
+		int ret;
+		int j;
+		char *patharr[1024];
+		int cnt = 0;
+
+		ptr = fuzzypath->path;
+		while((p = strchr(ptr, MULTIPATH_SPLIT_CH)) != NULL) {
+			*p++ = '\0';
+			patharr[cnt++] = ptr;
+			ptr = p;
+		}
+		patharr[cnt++] = ptr;
+
+		tmppath = xzalloc(PATH_ARR_MAX + 1);
+		for(j=0; j<cnt; j++) {
 			memset(tmppath, 0, PATH_ARR_MAX + 1);
-			len = snprintf(path, PATH_MAX, "%s/", patharr[i]);
-			len += snprintf(path + len, PATH_MAX - len, "%s", fuzzypath->path);
+			len = snprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
 			path[len] = '\0';
 
 			logv("lrc 'fuzzypath': fuzzypath:%s", path);
@@ -295,13 +343,6 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		if(outlen > 0)
 			outpath[outlen - 1] = '\0';
 		free(tmppath);
-	} else {
-		len = snprintf(path, PATH_MAX, "%s", fuzzypath->path);
-		path[len] = '\0';
-
-		logv("lrc 'fuzzypath': fuzzypath:%s", path);
-
-		fuzzy2path(path, outpath);
 	}
 
 #else

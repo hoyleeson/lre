@@ -10,6 +10,9 @@ define file_permission_unequal(_path, _perm) "file(path=$_path) {permission != $
 define process_running(_name) 			"process(procname=$_name) {running == 1}"
 define process_running(_name, _path) 	"process(procname=$_name, procpath=$_path) {running == 1}"
 
+define process_not_running_except(_name, _excludepath) 	"process(procname=$_name, excludepath=$_excludepath) {running == 0}"
+define process_not_running_exceptfuzzypath(_name, _excludepath) 	"process(procname=$_name, excludepath=fuzzypath(path=$_excludepath)) {running == 0}"
+
 define process_user_equal(_name, _owner) 		"process(procname=$_name) {running == 1 && owner == $_owner}"
 define process_user_equal(_name, _path, _owner) "process(procname=$_name, procpath=$_path) {running == 1 && owner == $_owner}"
 
@@ -21,5 +24,5 @@ define process_running_fuzzypath(_name, _fzpath, _owner) 	"process(procname=$_na
 define network_listening(_port) 	"network(port=$_port) {listen == 1}"
 define network_listening(_protocol, _port) 	"network(protocol=$_protocol, port=$_port) {listen == 1}"
 
-include "samples/local_macro.lr"
+include "local_macro.lr"
 

@@ -16,6 +16,7 @@ cp -fr liblre.so $OUTPUT
 cp -fr lrexe $OUTPUT
 
 cp -fr global_macro.lr $OUTPUT
+cp -fr samples/local_macro.lr $OUTPUT
 
 cp -fr samples/samples $OUTPUT
 cp -fr samples/lrtests $OUTPUT
