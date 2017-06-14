@@ -4,9 +4,10 @@
 define file_exist(_path)  	"file(path=$_path) {exist==1}"
 define file_owner_equal(_path, _owner) 		"file(path=$_path) {owner == $_owner}"
 define file_owner_unequal(_path, _owner) 	"file(path=$_path) {owner != $_owner}"
-define file_permission_equal(_path, _perm) 	"file(path=$_path) {permission == $_perm}"
-define file_permission_unequal(_path, _perm) "file(path=$_path) {permission != $_perm}"
-define file_permission_le_eq(_path, _perm) "file(path=$_path) {exist==1 && permission <= $_perm}"
+define file_perm_equal(_path, _perm) 	"file(path=$_path) {permission == $_perm}"
+define file_perm_unequal(_path, _perm) 	"file(path=$_path) {permission != $_perm}"
+define file_perm_le_eq(_path, _perm)   	"file(path=$_path) {exist==0 || permission <= $_perm}"
+define file_perm_le_eq_owner_eq(_path, _perm, _owner) "file(path=$_path) {exist==0 || (permission <= $_perm && owner == $_owner)}"
 
 define process_running(_name) 			"process(procname=$_name) {running == 1}"
 define process_running(_name, _path) 	"process(procname=$_name, procpath=$_path) {running == 1}"

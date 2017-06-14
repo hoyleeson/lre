@@ -144,7 +144,7 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 {
 	const char *str;
 	struct lrc_file *file;
-	char user[32];
+	char user[32] = {0};
 	int ret;
 	struct passwd *pw;
 
@@ -179,8 +179,12 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 
 out:
 	if(vaild_lre_results(ret)) {
+		int len;
 		char buf[64] = {0};
-		snprintf(buf, 64, "expr 'owner' %smatched.", ret ? "" : "not ");
+		len = snprintf(buf, 64, "'owner' %smatched.", ret ? "" : "not ");
+		if(!ret) {
+			len += snprintf(buf + len, 64 - len, " owner: '%s'", user);
+		}
 		file->base.output(handle, buf);
 	}
 	return ret;
@@ -244,7 +248,7 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 		char buf[64] = {0};
 		len = snprintf(buf, 64, "'permission' %smatched.", ret ? "" : "not ");
 		if(!ret) {
-			len += snprintf(buf + len, 64 - len, " perm: %d", perm2int(file->permission));
+			len += snprintf(buf + len, 64 - len, " perm: '%d'", perm2int(file->permission));
 		}
 		file->base.output(handle, buf);
 	}
