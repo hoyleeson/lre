@@ -199,6 +199,29 @@ static int int2perm(int val)
 	return v;
 }
 
+static int perm2int(int val)  
+{                             
+	int i = 1;                
+	int v = 0;                
+	while(val) {              
+		v = v + (val & 7) * i;
+		val >>= 3;            
+		i *= 10;              
+	}                         
+	return v;                 
+}                             
+
+static int file_perm_compare(unsigned long a, unsigned long b)
+{
+	int fperm = (int)a;
+	int bperm = (int)b;
+
+	if(fperm == bperm)
+		return 0;
+
+	return (fperm & (~bperm)) ? 1 : -1;
+}
+
 static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
 	int ret;
@@ -215,10 +238,14 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 	}
 
 	val = int2perm(lre_value_get_int(lreval));
-	ret = lre_compare_int(file->permission, val, opt);
+	ret = lre_compare(file->permission, val, opt, file_perm_compare);
 	if(vaild_lre_results(ret)) {
+		int len;
 		char buf[64] = {0};
-		snprintf(buf, 64, "expr 'permission' %smatched.", ret ? "" : "not ");
+		len = snprintf(buf, 64, "'permission' %smatched.", ret ? "" : "not ");
+		if(!ret) {
+			len += snprintf(buf + len, 64 - len, " perm: %d", perm2int(file->permission));
+		}
 		file->base.output(handle, buf);
 	}
 	return ret;

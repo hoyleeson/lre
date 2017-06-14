@@ -81,6 +81,14 @@ double lre_calc_dobule(double a, double b, int op);
 int lre_compare_int(int a, int b, int op);
 int lre_compare_double(double a, double b, int op);
 int lre_compare_string(char *a, char *b, int op);
+/* 
+ * cmp results:
+ * a > b: [return > 0]
+ * a < b: [return < 0]
+ * a = b: [return = 0]
+ * */
+int lre_compare(unsigned long a, unsigned long b, int op,
+	   	int (*cmp)(unsigned long a, unsigned long b));
 
 
 /***********************************************************/

@@ -109,3 +109,29 @@ int lre_compare_string(char *a, char *b, int op)
 	return RET_DEAD_VAL;
 }
 
+int lre_compare(unsigned long a, unsigned long b, int op,
+	   	int (*cmp)(unsigned long a, unsigned long b))
+{
+	int ret;
+
+	ret = cmp(a, b);
+
+#define COMPARE(opcode, op) \
+	case SYNTAX_SYM_##opcode: \
+		return ret op 0
+
+	switch(op) {
+		COMPARE(EQUAL, ==);
+		COMPARE(NOT_EQUAL, !=);
+		COMPARE(GT, >);
+		COMPARE(LT, <);
+		COMPARE(GT_OR_EQUAL, >=);
+		COMPARE(LT_OR_EQUAL, <=);
+		default:
+		loge("Unsupport compare op:%d", op);
+		return RET_DEAD_VAL;
+	}
+#undef COMPARE
+	return RET_DEAD_VAL;
+}
+
