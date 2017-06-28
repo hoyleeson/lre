@@ -15,7 +15,6 @@
 #include "../log.h"
 #include "../lre.h"
 
-#define MULTIPATH_SPLIT_CH 	';'
 
 #define PATH_ARR_MAX  	(PATH_MAX * 10)
 
@@ -325,11 +324,11 @@ static int process_execute(lrc_obj_t *handle)
 	{
 		int omit = 0;
 		int len;
-		char buf[64] = {0};
+		char buf[DETAILS_UNIT_MAX] = {0};
 
-		len = snprintf(buf, 64, "process");
+		len = snprintf(buf, DETAILS_UNIT_MAX, "process");
 		if(process->procname)
-			len += snprintf(buf + len, 64 - len, " '%s'", process->procname);
+			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s'", process->procname);
 		if(process->procpath) {
 			char *p;
 			int l = strlen(process->procpath);
@@ -338,7 +337,7 @@ static int process_execute(lrc_obj_t *handle)
 				p = process->procpath + l - 32;
 			} else
 				p = process->procpath;
-			len += snprintf(buf + len, 64 - len, " '%s%s'", omit ? "..." : "", p);
+			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s%s'", omit ? "..." : "", p);
 		}
 		process->base.output(handle, buf);
 	}
@@ -455,15 +454,15 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 	ret = lre_compare_int(!!process->count, lre_value_get_int(lreval), opt);
 	if(vaild_lre_results(ret)) {
 		int i;
-		char buf[256] = {0};
+		char buf[DETAILS_UNIT_MAX] = {0};
 		int len;
-		len = snprintf(buf, 256, "%srunning.", process->count ? "":"not ");
+		len = snprintf(buf, DETAILS_UNIT_MAX, "%srunning.", process->count ? "":"not ");
 		if(process->excludepath && process->count > 0) {
-			len += snprintf(buf + len, 256 - len, " path:");
+			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " path:");
 			for(i=0; i<process->count; i++) {
 				struct process_info *psinfo;
 				psinfo = process->psinfo[i];
-				len += snprintf(buf + len, 256 - len, "%s;", 
+				len += snprintf(buf + len, DETAILS_UNIT_MAX - len, "%s;", 
 						psinfo->binpath ? psinfo->binpath : "(unknown)");
 			}
 		}
@@ -509,8 +508,8 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 
 	ret = lre_compare_int(found, 1, opt);
 	if(vaild_lre_results(ret)) {
-		char buf[64] = {0};
-		snprintf(buf, 64, "expr 'user' %smatched.", ret ? "" : "not ");
+		char buf[DETAILS_UNIT_MAX] = {0};
+		snprintf(buf, DETAILS_UNIT_MAX, "expr 'user' %smatched.", ret ? "" : "not ");
 		process->base.output(handle, buf);
 	}
 	return ret;
@@ -577,6 +576,10 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 					repeat = 1;
 			}
 			if(!repeat) {
+				if(count >= PROCESS_COUNT_MAX) {
+					logw("'processdir': path count %d > %d", count, PROCESS_COUNT_MAX);
+					break;
+				}
 				patharr[count++] = psinfo->binpath;
 				logd("'processdir' call matched process:%s, binpath:%s", 
 					psinfo->name, psinfo->binpath);

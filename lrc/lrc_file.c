@@ -60,15 +60,15 @@ static int file_execute(lrc_obj_t *handle)
 	{
 		char *p;
 		int omit = 0;
-		char buf[64] = {0};
+		char buf[DETAILS_UNIT_MAX] = {0};
 		int len = strlen(file->path);
-		if(len > 32) {
+		if(len > DETAILS_UNIT_MAX - 32) {
 			omit = 1;
-			p = file->path + len - 32;
+			p = file->path + len - (DETAILS_UNIT_MAX - 32);
 		} else
 			p = file->path;	
 
-		snprintf(buf, 64, "file '%s%s'", omit ? "..." : "", p);
+		snprintf(buf, DETAILS_UNIT_MAX, "file '%s%s'", omit ? "..." : "", p);
 		file->base.output(handle, buf);
 	}
 	return 0;
@@ -133,8 +133,8 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	/*FIXME: verify val first */
 	ret = lre_compare_int(file->exist, lre_value_get_int(lreval), opt);
 	if(vaild_lre_results(ret)) {
-		char buf[64] = {0};
-		snprintf(buf, 64, "%sexist.", file->exist ? "":"not ");
+		char buf[DETAILS_UNIT_MAX] = {0};
+		snprintf(buf, DETAILS_UNIT_MAX, "%sexist.", file->exist ? "":"not ");
 		file->base.output(handle, buf);
 	}
 	return ret;
@@ -180,10 +180,10 @@ static int expr_owner_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 out:
 	if(vaild_lre_results(ret)) {
 		int len;
-		char buf[64] = {0};
-		len = snprintf(buf, 64, "'owner' %smatched.", ret ? "" : "not ");
+		char buf[DETAILS_UNIT_MAX] = {0};
+		len = snprintf(buf, DETAILS_UNIT_MAX, "'owner' %smatched.", ret ? "" : "not ");
 		if(!ret) {
-			len += snprintf(buf + len, 64 - len, " owner: '%s'", user);
+			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " owner: '%s'", user);
 		}
 		file->base.output(handle, buf);
 	}
@@ -245,10 +245,11 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 	ret = lre_compare(file->permission, val, opt, file_perm_compare);
 	if(vaild_lre_results(ret)) {
 		int len;
-		char buf[64] = {0};
-		len = snprintf(buf, 64, "'permission' %smatched.", ret ? "" : "not ");
+		char buf[DETAILS_UNIT_MAX] = {0};
+		len = snprintf(buf, DETAILS_UNIT_MAX, "'permission' %smatched.", ret ? "" : "not ");
 		if(!ret) {
-			len += snprintf(buf + len, 64 - len, " perm: '%d'", perm2int(file->permission));
+			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, 
+					" perm: '%d'", perm2int(file->permission));
 		}
 		file->base.output(handle, buf);
 	}

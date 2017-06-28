@@ -12,7 +12,6 @@
 #include "../utils.h"
 #include "../lre.h"
 
-#define MULTIPATH_SPLIT_CH 	';'
 
 struct lrc_fuzzypath {
 	struct lrc_object base;
@@ -21,6 +20,7 @@ struct lrc_fuzzypath {
 	int isabspath;
 };
 
+#define PATH_CNT_MAX 	(1024)
 #define PATH_ARR_MAX  	(PATH_MAX * 10)
 
 #define DIR_DEPTH_MAX 		(128)
@@ -241,6 +241,7 @@ static int fuzzy2path(char *path, char *outpath)
 	return 0;
 }
 
+
 static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 {
 	char path[PATH_MAX] = {0};
@@ -265,8 +266,8 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		char *tmppath;
 		int ret;
 		int i, j;
-		char *bpatharr[1024];
-		char *patharr[1024];
+		char *bpatharr[PATH_CNT_MAX];
+		char *patharr[PATH_CNT_MAX];
 		int bcnt = 0;
 		int cnt = 0;
 
@@ -275,6 +276,8 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 			*p++ = '\0';
 			bpatharr[bcnt++] = ptr;
 			ptr = p;
+			if(bcnt >= PATH_CNT_MAX-1)
+				break;
 		}
 		bpatharr[bcnt++] = ptr;
 
@@ -283,6 +286,8 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 			*p++ = '\0';
 			patharr[cnt++] = ptr;
 			ptr = p;
+			if(cnt >= PATH_CNT_MAX-1)
+				break;
 		}
 		patharr[cnt++] = ptr;
 
@@ -314,7 +319,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		char *tmppath;
 		int ret;
 		int j;
-		char *patharr[1024];
+		char *patharr[PATH_CNT_MAX];
 		int cnt = 0;
 
 		ptr = fuzzypath->path;
@@ -322,6 +327,8 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 			*p++ = '\0';
 			patharr[cnt++] = ptr;
 			ptr = p;
+			if(cnt >= PATH_CNT_MAX-1)
+				break;
 		}
 		patharr[cnt++] = ptr;
 

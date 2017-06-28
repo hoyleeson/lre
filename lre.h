@@ -44,6 +44,10 @@ struct lre_result {
 /* LRE errcode the same to errno */
 #define LRE_RET_ERROR 		(0xdeaddead)
 
+/* lrc protocols */
+#define MULTIPATH_SPLIT_CH 	';'
+#define DETAILS_UNIT_MAX 	(256)
+
 int lre_initX(const char *confpath, void (*logcb)(int, const char *));
 int lre_init(void);
 void lre_release(void);
