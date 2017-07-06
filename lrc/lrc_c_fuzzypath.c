@@ -335,7 +335,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		tmppath = xzalloc(PATH_ARR_MAX + 1);
 		for(j=0; j<cnt; j++) {
 			memset(tmppath, 0, PATH_ARR_MAX + 1);
-			len = xsnprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
+			len = xsnprintf(path, PATH_MAX, "%s", patharr[j]);
 			path[len] = '\0';
 
 			logv("lrc 'fuzzypath': fuzzypath:%s", path);
