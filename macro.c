@@ -102,11 +102,11 @@ char *lre_create_code_by_macro(struct lre_macro *macro,
 	for(i=0; i<macro->tokencnt; i++) {
 		if(macro->token[i].type == MACRO_TOKEN_TYPE_WORD) {
 			ptr = macro->token[i].wordptr;
-			len += snprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s",
+			len += xsnprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s",
 					ptr);
 		} else if(macro->token[i].type == MACRO_TOKEN_TYPE_ARG) {
 			idx = macro->token[i].argindex;
-			len += snprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s", 
+			len += xsnprintf(code + len, DEFAULT_CODEBUF_SIZE - len, "%s", 
 					args[idx]);
 		}
 	}
@@ -410,7 +410,7 @@ static int lre_macro_conf_load(const char *fpath)
 	int len;
 	char path[PATH_MAX] = { 0 };
 
-	snprintf(path, PATH_MAX, "%s/%s", lre_get_conf_path(), fpath);
+	xsnprintf(path, PATH_MAX, "%s/%s", lre_get_conf_path(), fpath);
 	logv("Macro: load lre macro config: %s.", path);
 
     confp = fopen(path, "r");

@@ -26,9 +26,9 @@ static int splicepath_execute(lrc_obj_t *handle, struct lre_value *val)
 
 	splicepath = (struct lrc_splicepath *)handle;
 	if(splicepath->basepath)
-		len += snprintf(path + len, PATH_MAX - len, "%s/", splicepath->basepath);
-	if(splicepath->path)
-		len += snprintf(path + len, PATH_MAX - len, "%s", splicepath->path);
+		len += xsnprintf(path + len, PATH_MAX - len, "%s", splicepath->basepath);
+	if(splicepath->path && strlen(splicepath->path) > 0)
+		len += xsnprintf(path + len, PATH_MAX - len, "/%s", splicepath->path);
 
 	if(strlen(path) == 0)
 		return LRE_RET_ERROR;

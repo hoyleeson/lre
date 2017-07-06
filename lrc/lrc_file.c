@@ -68,7 +68,7 @@ static int file_execute(lrc_obj_t *handle)
 		} else
 			p = file->path;	
 
-		snprintf(buf, DETAILS_UNIT_MAX, "file '%s%s'", omit ? "..." : "", p);
+		xsnprintf(buf, DETAILS_UNIT_MAX, "file '%s%s'", omit ? "..." : "", p);
 		file->base.output(handle, buf);
 	}
 	return 0;
@@ -134,7 +134,7 @@ static int expr_exist_handler(lrc_obj_t *handle, int opt, struct lre_value *lrev
 	ret = lre_compare_int(file->exist, lre_value_get_int(lreval), opt);
 	if(vaild_lre_results(ret)) {
 		char buf[DETAILS_UNIT_MAX] = {0};
-		snprintf(buf, DETAILS_UNIT_MAX, "%sexist.", file->exist ? "":"not ");
+		xsnprintf(buf, DETAILS_UNIT_MAX, "%sexist.", file->exist ? "":"not ");
 		file->base.output(handle, buf);
 	}
 	return ret;
@@ -181,9 +181,9 @@ out:
 	if(vaild_lre_results(ret)) {
 		int len;
 		char buf[DETAILS_UNIT_MAX] = {0};
-		len = snprintf(buf, DETAILS_UNIT_MAX, "'owner' %smatched.", ret ? "" : "not ");
+		len = xsnprintf(buf, DETAILS_UNIT_MAX, "'owner' %smatched.", ret ? "" : "not ");
 		if(!ret) {
-			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " owner: '%s'", user);
+			len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, " owner: '%s'", user);
 		}
 		file->base.output(handle, buf);
 	}
@@ -246,9 +246,9 @@ static int expr_permission_handler(lrc_obj_t *handle, int opt, struct lre_value 
 	if(vaild_lre_results(ret)) {
 		int len;
 		char buf[DETAILS_UNIT_MAX] = {0};
-		len = snprintf(buf, DETAILS_UNIT_MAX, "'permission' %smatched.", ret ? "" : "not ");
+		len = xsnprintf(buf, DETAILS_UNIT_MAX, "'permission' %smatched.", ret ? "" : "not ");
 		if(!ret) {
-			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, 
+			len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, 
 					" perm: '%d'", perm2int(file->permission));
 		}
 		file->base.output(handle, buf);

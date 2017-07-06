@@ -17,14 +17,17 @@
 
 
 #define PATH_ARR_MAX  	(PATH_MAX * 10)
+#define PROCESS_ARG_MAX     (1024)
+#define CMDLINE_LEN_MAX     (2048)
 
 struct process_info {
 	int pid;
 	int ppid;
 	char *name;
 	char *user;
-	char *cmdline;
 	char *binpath;
+	char *cmdline;
+    int cmdlen;
 
 	struct process_info *next;
 };
@@ -92,7 +95,7 @@ static char *nexttok(char **strp)
 static struct process_info *get_process_info(int pid)
 {
 	char user[32] = {0};
-	char buf[1024] = {0};
+	char buf[CMDLINE_LEN_MAX] = {0};
 	char path[PATH_MAX] = {0};
 	struct stat stats;
 	int fd, r;
@@ -165,14 +168,17 @@ static struct process_info *get_process_info(int pid)
 	if(fd <= 0) {
 		r = 0;
 	} else {
-		r = read(fd, buf, 1023);
+		r = read(fd, buf, CMDLINE_LEN_MAX);
 		close(fd);
 		if(r < 0) r = 0;
 	}
 	buf[r] = 0;
 
-	psinfo->cmdline = strdup(buf);
+	// psinfo->cmdline = strdup(buf);
+	psinfo->cmdline = xzalloc(r);
 	assert_ptr(psinfo->cmdline);
+    memcpy(psinfo->cmdline, buf, r);
+    psinfo->cmdlen = r;
 
 	return psinfo;
 }
@@ -233,6 +239,10 @@ struct lrc_process {
 	char *procpath;
 	char *excludepath;
 
+    /* just use for cmd_extract calls. */
+    int argindex;
+	char *argkey;
+
 	struct process_info *psinfo[PROCESS_COUNT_MAX];
 	int count;
 
@@ -240,6 +250,8 @@ struct lrc_process {
 #define STATE_EXEC_FAILED 	(0)
 #define STATE_EXEC_SUCCESS 	(1)
 
+    int flags;
+#define FLAGS_CMDLINE_EXTRACT   (1<<0)
 };
 
 static void fill_spec_process(struct lrc_process *process)
@@ -326,9 +338,9 @@ static int process_execute(lrc_obj_t *handle)
 		int len;
 		char buf[DETAILS_UNIT_MAX] = {0};
 
-		len = snprintf(buf, DETAILS_UNIT_MAX, "process");
+		len = xsnprintf(buf, DETAILS_UNIT_MAX, "process");
 		if(process->procname)
-			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s'", process->procname);
+			len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s'", process->procname);
 		if(process->procpath) {
 			char *p;
 			int l = strlen(process->procpath);
@@ -337,7 +349,7 @@ static int process_execute(lrc_obj_t *handle)
 				p = process->procpath + l - 32;
 			} else
 				p = process->procpath;
-			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s%s'", omit ? "..." : "", p);
+			len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, " '%s%s'", omit ? "..." : "", p);
 		}
 		process->base.output(handle, buf);
 	}
@@ -357,6 +369,7 @@ static lrc_obj_t *process_constructor(void)
 	process->procpath = NULL;
 	process->excludepath = NULL;
 	process->count = 0;
+	process->flags = 0;
 
 	return (lrc_obj_t *)process;
 }
@@ -371,6 +384,9 @@ static void process_destructor(lrc_obj_t *handle)
 		free(process->procname);
 	if(process->procpath)
 		free(process->procpath);
+	if(process->excludepath)
+		free(process->excludepath);
+
 	free(process);
 }
 
@@ -434,6 +450,53 @@ static int arg_excludepath_handler(lrc_obj_t *handle, struct lre_value *lreval)
 	return LRE_RET_OK;
 }
 
+static int arg_argkey_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	const char *str;
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+
+    if((process->flags & FLAGS_CMDLINE_EXTRACT) == 0) {
+		loge("lrc 'process' err: invaild arg 'argkey'");
+		return LRE_RET_ERROR;
+    }
+
+	if(!lreval || !lre_value_is_string(lreval)) {
+		loge("lrc 'process' err: argkey must be string");
+		return LRE_RET_ERROR;
+	}
+	str = lre_value_get_string(lreval);
+	if(!str)
+		return LRE_RET_ERROR;
+
+	process->argkey = strdup(str);
+	assert_ptr(process->argkey);
+	logd("lrc 'process' arg: argkey: %s", process->argkey);
+	return LRE_RET_OK;
+}
+
+static int arg_argindex_handler(lrc_obj_t *handle, struct lre_value *lreval)
+{
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+
+    if((process->flags & FLAGS_CMDLINE_EXTRACT) == 0) {
+		loge("lrc 'process' err: invaild arg 'argindex'");
+		return LRE_RET_ERROR;
+    }
+
+	if(!lreval || !lre_value_is_int(lreval)) {
+		loge("lrc 'process' err: argindex must be integer");
+		return LRE_RET_ERROR;
+	}
+
+    process->argindex = lre_value_get_int(lreval);
+	logd("lrc 'process' arg: argindex: %d", process->argindex);
+	return LRE_RET_OK;
+}
+
 
 static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lreval)
 {
@@ -456,13 +519,13 @@ static int expr_running_handler(lrc_obj_t *handle, int opt, struct lre_value *lr
 		int i;
 		char buf[DETAILS_UNIT_MAX] = {0};
 		int len;
-		len = snprintf(buf, DETAILS_UNIT_MAX, "%srunning.", process->count ? "":"not ");
+		len = xsnprintf(buf, DETAILS_UNIT_MAX, "%srunning.", process->count ? "":"not ");
 		if(process->excludepath && process->count > 0) {
-			len += snprintf(buf + len, DETAILS_UNIT_MAX - len, " path:");
+			len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, " path:");
 			for(i=0; i<process->count; i++) {
 				struct process_info *psinfo;
 				psinfo = process->psinfo[i];
-				len += snprintf(buf + len, DETAILS_UNIT_MAX - len, "%s;", 
+				len += xsnprintf(buf + len, DETAILS_UNIT_MAX - len, "%s;", 
 						psinfo->binpath ? psinfo->binpath : "(unknown)");
 			}
 		}
@@ -509,7 +572,7 @@ static int expr_user_handler(lrc_obj_t *handle, int opt, struct lre_value *lreva
 	ret = lre_compare_int(found, 1, opt);
 	if(vaild_lre_results(ret)) {
 		char buf[DETAILS_UNIT_MAX] = {0};
-		snprintf(buf, DETAILS_UNIT_MAX, "expr 'user' %smatched.", ret ? "" : "not ");
+		xsnprintf(buf, DETAILS_UNIT_MAX, "expr 'user' %smatched.", ret ? "" : "not ");
 		process->base.output(handle, buf);
 	}
 	return ret;
@@ -598,7 +661,7 @@ static int processdir_execute(lrc_obj_t *handle, struct lre_value *val)
 
 	for(i=0; i< count; i++) {
 		char dir[PATH_MAX] = {0};
-		len += snprintf(outpath + len, PATH_ARR_MAX - len, "%s%c", 
+		len += xsnprintf(outpath + len, PATH_ARR_MAX - len, "%s%c", 
 				path2dir(patharr[i], dir), MULTIPATH_SPLIT_CH);
 	}
 	outpath[len - 1] = '\0';
@@ -619,6 +682,11 @@ static lrc_obj_t *processdir_constructor(void)
 	if(!process) {
 		return (lrc_obj_t *)0;
 	}
+	process->procname = NULL;
+	process->procpath = NULL;
+	process->excludepath = NULL;
+	process->count = 0;
+	process->flags = 0;
 
 	return (lrc_obj_t *)process;
 }
@@ -633,8 +701,141 @@ static void processdir_destructor(lrc_obj_t *handle)
 		free(process->procname);
 	if(process->procpath)
 		free(process->procpath);
+	if(process->excludepath)
+		free(process->excludepath);
+
 	free(process);
 }
+
+static int cmd2args(const char *cmdline, int len, char **argv)
+{
+    int i = 0;
+    int argc = 0;
+    char *ptr = (char *)cmdline;
+
+    while(i < len) {
+        if(ptr[i] == 0) {
+            i++;
+            continue;
+        }
+        argv[argc++] = ptr + i;
+        i += strlen(ptr + i);
+    }
+    return argc;
+}
+
+#define CMDLINE_EXTRACT_LEN_MAX     (4095)
+static int cmdline_extract_execute(lrc_obj_t *handle, struct lre_value *val)
+{
+	int i;
+    int len;
+    int keylen;
+	struct lrc_process *process;
+	struct process_info *psinfo;
+    int argc;
+    char *argv[PROCESS_ARG_MAX];
+    int spacesplit = 0;
+    char *outstr;
+
+    if(processlist == NULL)
+        processes_info_load();
+
+    process = (struct lrc_process *)handle;
+    if(!process->procname && !process->procpath) {
+        process->state = STATE_EXEC_FAILED;
+        loge("Failed execute 'process' func. Not specified process name or path.");
+        return -EINVAL;
+    }
+
+    fill_spec_process(process);
+
+    process->state = STATE_EXEC_SUCCESS;
+
+    keylen = strlen(process->argkey);
+    while (process->argkey[keylen - 1] == ' ') {
+        spacesplit = 1;
+        keylen--;
+        if(keylen <= 0) {
+            loge("lrc 'cmdline_extract': Invaild 'argkey'");
+            return -EINVAL;
+        }
+    }
+
+    outstr = xzalloc(CMDLINE_EXTRACT_LEN_MAX + 1);
+
+    len = 0;
+    for(i=0; i<process->count; i++) {
+        int j;
+        psinfo = process->psinfo[i];
+
+        argc = cmd2args(psinfo->cmdline, psinfo->cmdlen, argv);
+
+        if(process->argindex != 0 && 
+                process->argindex < argc) {
+            len += xsnprintf(outstr + len, CMDLINE_EXTRACT_LEN_MAX - len, "%s%c", 
+                    argv[process->argindex], MULTIPATH_SPLIT_CH);
+            continue;
+        }
+        for(j=0; j<argc; j++) {
+            if(!strncmp(argv[j], process->argkey, keylen)) {
+                break;
+            }
+        }
+
+        if(spacesplit && (j + 1) < argc) {
+            j++;
+            len += xsnprintf(outstr + len, CMDLINE_EXTRACT_LEN_MAX - len, "%s%c", 
+                    argv[j], MULTIPATH_SPLIT_CH);
+        } else if(j < argc) {
+            len += xsnprintf(outstr + len, CMDLINE_EXTRACT_LEN_MAX - len, "%s%c", 
+                    argv[j] + strlen(process->argkey), MULTIPATH_SPLIT_CH);
+        }
+    }
+    outstr[len - 1] = '\0';
+
+	lre_value_dup2_string(val, outstr);
+	free(outstr);
+	return 0;
+}
+
+static lrc_obj_t *cmdline_extract_constructor(void)
+{
+	struct lrc_process *process;
+
+	process = malloc(sizeof(*process));
+	if(!process) {
+		return (lrc_obj_t *)0;
+	}
+	process->procname = NULL;
+	process->procpath = NULL;
+	process->excludepath = NULL;
+	process->count = 0;
+
+	process->argkey = NULL;
+	process->argindex = 0;
+
+	process->flags = FLAGS_CMDLINE_EXTRACT;
+	return (lrc_obj_t *)process;
+}
+
+static void cmdline_extract_destructor(lrc_obj_t *handle)
+{
+	struct lrc_process *process;
+
+	process = (struct lrc_process *)handle;
+
+	if(process->procname)
+		free(process->procname);
+	if(process->procpath)
+		free(process->procpath);
+	if(process->excludepath)
+		free(process->excludepath);
+	if(process->argkey)
+        free(process->argkey);
+
+	free(process);
+}
+
 
 static struct lrc_stub_arg process_args[] = {
 	{
@@ -679,6 +880,31 @@ static struct lrc_stub_func lrc_funcs[] = {
 	}
 };
 
+static struct lrc_stub_arg cmdline_extract_args[] = {
+	{
+		.keyword  	 = "procname",
+		.description = "Type: string. Specify process name. example: procname=\"bash\"",
+		.handler 	 = arg_procname_handler,
+	}, {
+		.keyword  	 = "procpath",
+		.description = "Type: string. Specify process binary directory. example: procpath=\"/usr/local/\"",
+		.handler 	 = arg_procpath_handler,
+	}, {
+		.keyword  	 = "excludepath",
+		.description = "Type: string. example: excludepath=\"/usr/local/\"",
+		.handler 	 = arg_excludepath_handler,
+	}, {
+        .keyword  	 = "argindex",
+		.description = "Type: string. example: excludepath=\"/usr/local/\"",
+		.handler 	 = arg_argindex_handler,
+    }, {
+		.keyword  	 = "argkey",
+		.description = "Type: string. example: excludepath=\"/usr/local/\"",
+		.handler 	 = arg_argkey_handler,
+	}
+};
+
+
 static struct lrc_stub_call lrc_calls[] = {
 	{
 		.keyword 	 = "processdir",
@@ -689,6 +915,15 @@ static struct lrc_stub_call lrc_calls[] = {
 
 		.args 	   = process_args,
 		.argcount  = ARRAY_SIZE(process_args),
+	}, {
+		.keyword 	 = "cmdline_extract",
+		.description = "extract arguments item in cmdline.",
+		.constructor = cmdline_extract_constructor,
+		.exec 		 = cmdline_extract_execute,
+		.destructor  = cmdline_extract_destructor,
+
+		.args 	   = cmdline_extract_args,
+		.argcount  = ARRAY_SIZE(cmdline_extract_args),
 	}
 };
 

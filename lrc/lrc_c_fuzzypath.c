@@ -50,7 +50,7 @@ static void path_add(char *path, char *new)
 
 	//logv("fuzzypath add: %s", new);
 	len = strlen(path);
-	len += snprintf(path + len, PATH_ARR_MAX - len, "%s%c",
+	len += xsnprintf(path + len, PATH_ARR_MAX - len, "%s%c",
 		   	new, MULTIPATH_SPLIT_CH);
 //	strncat(path, new, PATH_ARR_MAX);
 //	strncat(path, ":", PATH_ARR_MAX);
@@ -210,7 +210,7 @@ static int fuzzy2path(char *path, char *outpath)
 	/*Step 2. walk real path */
 	for (i=0; i<cnt; i++) {
 		if(fdir[i].type == DIRENT_TYPE_NORMAL) {
-			len += snprintf(buf + len, PATH_MAX - len, "%s/", fdir[i].name);
+			len += xsnprintf(buf + len, PATH_MAX - len, "%s/", fdir[i].name);
 		} else {
 			break;
 		}
@@ -295,8 +295,8 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		for(i=0; i<bcnt; i++) {
 			for(j=0; j<cnt; j++) {
 				memset(tmppath, 0, PATH_ARR_MAX + 1);
-				len = snprintf(path, PATH_MAX, "%s/", bpatharr[i]);
-				len += snprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
+				len = xsnprintf(path, PATH_MAX, "%s/", bpatharr[i]);
+				len += xsnprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
 				path[len] = '\0';
 
 				logv("lrc 'fuzzypath': fuzzypath:%s", path);
@@ -305,7 +305,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 				if(ret) {
 					continue;	
 				}
-				outlen += snprintf(outpath + outlen, PATH_ARR_MAX - outlen, "%s%c", 
+				outlen += xsnprintf(outpath + outlen, PATH_ARR_MAX - outlen, "%s%c", 
 						tmppath, MULTIPATH_SPLIT_CH);
 			}
 		}
@@ -335,7 +335,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 		tmppath = xzalloc(PATH_ARR_MAX + 1);
 		for(j=0; j<cnt; j++) {
 			memset(tmppath, 0, PATH_ARR_MAX + 1);
-			len = snprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
+			len = xsnprintf(path + len, PATH_MAX - len, "%s", patharr[j]);
 			path[len] = '\0';
 
 			logv("lrc 'fuzzypath': fuzzypath:%s", path);
@@ -344,7 +344,7 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 			if(ret) {
 				continue;	
 			}
-			outlen += snprintf(outpath + outlen, PATH_ARR_MAX - outlen, "%s%c", 
+			outlen += xsnprintf(outpath + outlen, PATH_ARR_MAX - outlen, "%s%c", 
 					tmppath, MULTIPATH_SPLIT_CH);
 		}
 		if(outlen > 0)
@@ -354,10 +354,10 @@ static int fuzzypath_execute(lrc_obj_t *handle, struct lre_value *val)
 
 #else
 	if(fuzzypath->basepath)
-		len += snprintf(path + len, PATH_MAX - len, "%s/", fuzzypath->basepath);
+		len += xsnprintf(path + len, PATH_MAX - len, "%s/", fuzzypath->basepath);
 
 	if(fuzzypath->path)
-		len += snprintf(path + len, PATH_MAX - len, "%s", fuzzypath->path);
+		len += xsnprintf(path + len, PATH_MAX - len, "%s", fuzzypath->path);
 
 	if(strlen(path) == 0) {
 		logd("lrc 'fuzzypath': invaild path");

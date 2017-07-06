@@ -36,7 +36,7 @@ void exec_output_cb(lrc_obj_t *handle, const char *str)
 		etc = 1;
 	}
 
-	ctx->detailen += snprintf(ctx->details + ctx->detailen, len, "%s", str);
+	ctx->detailen += xsnprintf(ctx->details + ctx->detailen, len, "%s", str);
 	ctx->detailen += sprintf(ctx->details + ctx->detailen, "%s ", etc ? "...": "");
 }
 

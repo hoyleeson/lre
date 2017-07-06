@@ -64,6 +64,7 @@ int xread(int fd, void* to, int len);
 int xwrite(int fd, const void* from, int len);
 void* xrealloc(void* block, size_t  size);
 char *xgetline(char *buf, int size, FILE *file);
+int xsnprintf(char *buf, size_t size, const char *fmt, ...);
 
 int is_digit(const char *str);
 int is_double_digit(const char *str);

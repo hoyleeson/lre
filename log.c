@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "log.h"
+#include "utils.h"
 
 /* The message mode refers to where informational messages go
    0 - stdout, 1 - syslog, 2 - quiet. The default is quiet. */
@@ -72,7 +73,7 @@ void log_print(int level, const char *fmt, ...)
 	time(&now);
 	strftime(timestr, 32, "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-	len = snprintf(buf, LOG_BUF_SIZE, "%s(%s)/[%c] ", 
+	len = xsnprintf(buf, LOG_BUF_SIZE, "%s(%s)/[%c] ", 
 			timestr, LOG_TAG, level_tags[level]);
 	va_start(ap, fmt);
 	vsnprintf(buf + len, LOG_BUF_SIZE - len, fmt, ap);

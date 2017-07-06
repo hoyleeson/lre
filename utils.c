@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "log.h"
 
@@ -48,6 +49,18 @@ void* xrealloc(void* block, size_t  size)
 		fatal("not enough memory");
 
 	return p;
+}
+
+int xsnprintf(char *buf, size_t size, const char *fmt, ...)
+{
+    va_list args;
+    int i;
+
+    va_start(args, fmt);
+    i = vsnprintf(buf, size, fmt, args);
+    va_end(args);
+
+    return (i > size) ? size : i;
 }
 
 int is_digit(const char *str)
