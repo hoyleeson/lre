@@ -18,20 +18,20 @@ struct lre_context;
 struct lre_value;
 
 struct lrc_object {
-	int type;
+    int type;
 #define LRC_OBJECT_FUNC 		(0)
 #define LRC_OBJECT_CALL 		(1)
 
-	void *context;
-	void (*output)(struct lrc_object *, const char *);
+    void *context;
+    void (*output)(struct lrc_object *, const char *);
 };
 
 typedef struct lrc_object lrc_obj_t;
 
 struct lre_result {
-	int result;
-	int errcode;
-	char *details;
+    int result;
+    int errcode;
+    char *details;
 };
 
 /* Logic rule engine execute results (true or false) */
@@ -63,7 +63,7 @@ void lre_help(void);
 
 static inline int vaild_lre_results(int res)
 {
-	return (res == LRE_RESULT_TRUE || res == LRE_RESULT_FALSE);
+    return (res == LRE_RESULT_TRUE || res == LRE_RESULT_FALSE);
 }
 
 void lre_value_dup2_string(struct lre_value *val, const char *str);
@@ -85,78 +85,78 @@ double lre_calc_dobule(double a, double b, int op);
 int lre_compare_int(int a, int b, int op);
 int lre_compare_double(double a, double b, int op);
 int lre_compare_string(char *a, char *b, int op);
-/* 
+/*
  * cmp results:
  * a > b: [return > 0]
  * a < b: [return < 0]
  * a = b: [return = 0]
  * */
 int lre_compare(unsigned long a, unsigned long b, int op,
-	   	int (*cmp)(unsigned long a, unsigned long b));
+                int (*cmp)(unsigned long a, unsigned long b));
 
 
 /***********************************************************/
 
 /* Virtual */
 struct lrc_stub_base {
-	char *keyword;
-	char *description;
+    char *keyword;
+    char *description;
 };
 
 struct lrc_stub_arg {
-	char *keyword;
-	char *description;
-	int (*handler)(lrc_obj_t *, struct lre_value *);
+    char *keyword;
+    char *description;
+    int (*handler)(lrc_obj_t *, struct lre_value *);
 };
 
 struct lrc_stub_expr {
-	char *keyword;
-	char *description;
-	int (*handler)(lrc_obj_t *, int, struct lre_value *);
+    char *keyword;
+    char *description;
+    int (*handler)(lrc_obj_t *, int, struct lre_value *);
 };
 
 struct lrc_stub_var {
-	char *keyword;
-	char *description;
-	int (*handler)(lrc_obj_t *, _out struct lre_value *);
+    char *keyword;
+    char *description;
+    int (*handler)(lrc_obj_t *, _out struct lre_value *);
 };
 
 struct lrc_stub_call {
-	char *keyword;
-	char *description;
-	lrc_obj_t *(*constructor)(void);
-	int (*exec)(struct lrc_object *, struct lre_value *);
-	void (*destructor)(struct lrc_object *);
+    char *keyword;
+    char *description;
+    lrc_obj_t *(*constructor)(void);
+    int (*exec)(struct lrc_object *, struct lre_value *);
+    void (*destructor)(struct lrc_object *);
 
-	struct lrc_stub_arg *args;
-	int argcount;
-	struct lrc_stub_var *vars;
-	int varcount;
+    struct lrc_stub_arg *args;
+    int argcount;
+    struct lrc_stub_var *vars;
+    int varcount;
 };
 
 struct lrc_stub_func {
-	char *keyword;
-	char *description;
-	lrc_obj_t *(*constructor)(void);
-	int (*exec)(struct lrc_object *);
-	void (*destructor)(struct lrc_object *);
+    char *keyword;
+    char *description;
+    lrc_obj_t *(*constructor)(void);
+    int (*exec)(struct lrc_object *);
+    void (*destructor)(struct lrc_object *);
 
-	struct lrc_stub_arg *args;
-	int argcount;
-	struct lrc_stub_expr *exprs;
-	int exprcount;
-	struct lrc_stub_var *vars;
-	int varcount;
-	struct lrc_stub_func *funcs;
-	int funccount;
+    struct lrc_stub_arg *args;
+    int argcount;
+    struct lrc_stub_expr *exprs;
+    int exprcount;
+    struct lrc_stub_var *vars;
+    int varcount;
+    struct lrc_stub_func *funcs;
+    int funccount;
 };
 
 struct lrc_module {
-	char *name;
-	struct lrc_stub_func *funcs;
-	int funccount;
-	struct lrc_stub_call *calls;
-	int callcount;
+    char *name;
+    struct lrc_stub_func *funcs;
+    int funccount;
+    struct lrc_stub_call *calls;
+    int callcount;
 };
 
 int lrc_module_register(struct lrc_module *module);

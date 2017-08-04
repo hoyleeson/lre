@@ -2,16 +2,16 @@
 #define _LRE_MEMPOOL_H_
 
 struct mem_node {
-	struct mem_node *next;
+    struct mem_node *next;
 };
 
 struct mempool {
-	char *buf;
-	struct mem_node *node;
+    char *buf;
+    struct mem_node *node;
 
-	int size;
-	int init_count;
-	int free_count;
+    int size;
+    int init_count;
+    int free_count;
 };
 
 int mempool_init(struct mempool *pool, int size, int count);

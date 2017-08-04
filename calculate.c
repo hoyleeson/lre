@@ -9,16 +9,16 @@ double lre_calc_dobule(double a, double b, int op)
 	case SYNTAX_SYM_##opcode: \
 		return a op b
 
-	switch(op) {
-		CALC(ADD, +);
-		CALC(SUB, -);
-		CALC(MUL, *);
-		CALC(DIV, /);
-		default:
-		loge("Unsupport double calc op:%d", op);
-		return RET_DEAD_VAL;
-	}
-	return RET_DEAD_VAL;
+    switch (op) {
+            CALC(ADD, +);
+            CALC(SUB, -);
+            CALC(MUL, *);
+            CALC(DIV, / );
+        default:
+            loge("Unsupport double calc op:%d", op);
+            return RET_DEAD_VAL;
+    }
+    return RET_DEAD_VAL;
 #undef CALC
 }
 
@@ -28,17 +28,17 @@ int lre_calc_int(int a, int b, int op)
 	case SYNTAX_SYM_##opcode: \
 		return a op b
 
-	switch(op) {
-		CALC(ADD, +);
-		CALC(SUB, -);
-		CALC(MUL, *);
-		CALC(DIV, /);
-		default:
-		loge("Unsupport int calc op:%d", op);
-		return RET_DEAD_VAL;
-	}
+    switch (op) {
+            CALC(ADD, +);
+            CALC(SUB, -);
+            CALC(MUL, *);
+            CALC(DIV, / );
+        default:
+            loge("Unsupport int calc op:%d", op);
+            return RET_DEAD_VAL;
+    }
 #undef CALC
-	return RET_DEAD_VAL;
+    return RET_DEAD_VAL;
 }
 
 
@@ -48,19 +48,19 @@ int lre_compare_int(int a, int b, int op)
 	case SYNTAX_SYM_##opcode: \
 		return a op b
 
-	switch(op) {
-		COMPARE(EQUAL, ==);
-		COMPARE(NOT_EQUAL, !=);
-		COMPARE(GT, >);
-		COMPARE(LT, <);
-		COMPARE(GT_OR_EQUAL, >=);
-		COMPARE(LT_OR_EQUAL, <=);
-		default:
-		loge("Unsupport int compare op:%d", op);
-		return RET_DEAD_VAL;
-	}
+    switch (op) {
+            COMPARE(EQUAL, == );
+            COMPARE(NOT_EQUAL, != );
+            COMPARE(GT, > );
+            COMPARE(LT, < );
+            COMPARE(GT_OR_EQUAL, >= );
+            COMPARE(LT_OR_EQUAL, <= );
+        default:
+            loge("Unsupport int compare op:%d", op);
+            return RET_DEAD_VAL;
+    }
 #undef COMPARE
-	return RET_DEAD_VAL;
+    return RET_DEAD_VAL;
 }
 
 int lre_compare_double(double a, double b, int op)
@@ -69,69 +69,69 @@ int lre_compare_double(double a, double b, int op)
 	case SYNTAX_SYM_##opcode: \
 		return a op b
 
-	switch(op) {
-		COMPARE(EQUAL, ==);
-		COMPARE(NOT_EQUAL, !=);
-		COMPARE(GT, >);
-		COMPARE(LT, <);
-		COMPARE(GT_OR_EQUAL, >=);
-		COMPARE(LT_OR_EQUAL, <=);
-		default:
-		loge("Unsupport double compare op:%d", op);
-		return RET_DEAD_VAL;
-	}
+    switch (op) {
+            COMPARE(EQUAL, == );
+            COMPARE(NOT_EQUAL, != );
+            COMPARE(GT, > );
+            COMPARE(LT, < );
+            COMPARE(GT_OR_EQUAL, >= );
+            COMPARE(LT_OR_EQUAL, <= );
+        default:
+            loge("Unsupport double compare op:%d", op);
+            return RET_DEAD_VAL;
+    }
 #undef COMPARE
-	return RET_DEAD_VAL;
+    return RET_DEAD_VAL;
 }
 
 int lre_compare_string(char *a, char *b, int op)
 {
-	int ret;
+    int ret;
 
-	ret = strcmp(a, b);
+    ret = strcmp(a, b);
 
 #define COMPARE(opcode, op) \
 	case SYNTAX_SYM_##opcode: \
 		return ret op 0
 
-	switch(op) {
-		COMPARE(EQUAL, ==);
-		COMPARE(NOT_EQUAL, !=);
-		COMPARE(GT, >);
-		COMPARE(LT, <);
-		COMPARE(GT_OR_EQUAL, >=);
-		COMPARE(LT_OR_EQUAL, <=);
-		default:
-		loge("Unsupport string compare op:%d", op);
-		return RET_DEAD_VAL;
-	}
+    switch (op) {
+            COMPARE(EQUAL, == );
+            COMPARE(NOT_EQUAL, != );
+            COMPARE(GT, > );
+            COMPARE(LT, < );
+            COMPARE(GT_OR_EQUAL, >= );
+            COMPARE(LT_OR_EQUAL, <= );
+        default:
+            loge("Unsupport string compare op:%d", op);
+            return RET_DEAD_VAL;
+    }
 #undef COMPARE
-	return RET_DEAD_VAL;
+    return RET_DEAD_VAL;
 }
 
 int lre_compare(unsigned long a, unsigned long b, int op,
-	   	int (*cmp)(unsigned long a, unsigned long b))
+                int (*cmp)(unsigned long a, unsigned long b))
 {
-	int ret;
+    int ret;
 
-	ret = cmp(a, b);
+    ret = cmp(a, b);
 
 #define COMPARE(opcode, op) \
 	case SYNTAX_SYM_##opcode: \
 		return ret op 0
 
-	switch(op) {
-		COMPARE(EQUAL, ==);
-		COMPARE(NOT_EQUAL, !=);
-		COMPARE(GT, >);
-		COMPARE(LT, <);
-		COMPARE(GT_OR_EQUAL, >=);
-		COMPARE(LT_OR_EQUAL, <=);
-		default:
-		loge("Unsupport compare op:%d", op);
-		return RET_DEAD_VAL;
-	}
+    switch (op) {
+            COMPARE(EQUAL, == );
+            COMPARE(NOT_EQUAL, != );
+            COMPARE(GT, > );
+            COMPARE(LT, < );
+            COMPARE(GT_OR_EQUAL, >= );
+            COMPARE(LT_OR_EQUAL, <= );
+        default:
+            loge("Unsupport compare op:%d", op);
+            return RET_DEAD_VAL;
+    }
 #undef COMPARE
-	return RET_DEAD_VAL;
+    return RET_DEAD_VAL;
 }
 

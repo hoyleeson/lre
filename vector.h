@@ -3,9 +3,9 @@
 
 /* vector definition */
 typedef struct _vector {
-	unsigned int	active;
-	unsigned int	capacity;
-	void		**slot;
+    unsigned int	active;
+    unsigned int	capacity;
+    void		**slot;
 } vector_t;
 
 /* Some defines */
